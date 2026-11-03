@@ -1,3 +1,23 @@
+// Dismiss every table/detail dialog, including dialogs created after page load.
+// Both press and release must be on the backdrop; selecting text or dragging
+// a scrollbar from inside a dialog must never dismiss it.
+let backdropPress = null;
+function backdropDialog(event) {
+    const dialog = event.target;
+    if (dialog?.tagName !== 'DIALOG' || !dialog.open) return null;
+    const rect = dialog.getBoundingClientRect();
+    return event.clientX < rect.left || event.clientX > rect.right ||
+        event.clientY < rect.top || event.clientY > rect.bottom ? dialog : null;
+}
+document.addEventListener('pointerdown', event => {
+    backdropPress = event.button === 0 ? backdropDialog(event) : null;
+});
+document.addEventListener('pointercancel', () => { backdropPress = null; });
+document.addEventListener('click', event => {
+    const dialog = backdropDialog(event);
+    if (dialog && dialog === backdropPress) dialog.close();
+    backdropPress = null;
+});
 let DATA, ROWS = [], page = 'Tổng quan', currentExport = [];
 const pages = ['Tổng quan', 'Giám định viên', 'Phân tích', 'Cải tiến CLDV', 'Tra cứu hồ sơ', 'Dữ liệu'];
 const $ = id => document.getElementById(id), esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])), num = v => new Intl.NumberFormat('vi-VN').format(v), money = v => v >= 1e9 ? (v / 1e9).toLocaleString('vi-VN', { maximumFractionDigits: 3 }) + ' tỷ' : v >= 1e6 ? (v / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' tr' : num(v) + ' đ', pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '—', norm = v => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase(), id = r => r['Số HSBT'], sum = (rs, k) => rs.reduce((s, r) => s + (Number(r[k]) || 0), 0), garage = r => r['Tên garage (thường gọi)'] && r['Tên garage (thường gọi)'] !== '-' ? r['Tên garage (thường gọi)'] : r['Tên garage (ĐKKD)'] || 'Chưa có gara';
@@ -77,10 +97,11 @@ function showStatus(label) {
     if (!modal) {
         modal = document.createElement('dialog');
         modal.id = 'statusList';
+        modal.addEventListener('close', () => render());
         document.body.appendChild(modal);
     }
     const s = stats(rs), paid = sum(s.g, 'Tiền BT đã trả cho GR');
-    modal.innerHTML = `<button class="close" onclick="document.getElementById('statusList').close();render()">\u0110\u00F3ng \u2715</button><h2>Danh m\u1EE5c h\u1ED3 s\u01A1: ${esc(label)}</h2><p class="note">Theo b\u1ED9 l\u1ECDc \u0111ang ch\u1ECDn \u00B7 B\u1EA5m m\u1ED9t h\u1ED3 s\u01A1 \u0111\u1EC3 xem chi ti\u1EBFt; \u0111\u00F3ng chi ti\u1EBFt \u0111\u1EC3 quay l\u1EA1i danh s\u00E1ch.</p><div class="status-summary"><span><b>${num(rs.length)}</b> h\u1ED3 s\u01A1</span><span>\u01AF\u1EDBc/duy\u1EC7t BT: <b>${money(s.gMoney + s.tMoney)}</b></span><span>\u0110\u00E3 chi tr\u1EA3 g\u1ED3m VAT: <b>${money(paid)}</b></span></div><div class="tablehead"><h2>Danh s\u00E1ch t\u00F3m t\u1EAFt</h2><button onclick="exportCsv()">Xu\u1EA5t CSV</button></div>${records(rs)}`;
+    modal.innerHTML = `<button class="close" onclick="document.getElementById('statusList').close()">\u0110\u00F3ng \u2715</button><h2>Danh m\u1EE5c h\u1ED3 s\u01A1: ${esc(label)}</h2><p class="note">Theo b\u1ED9 l\u1ECDc \u0111ang ch\u1ECDn \u00B7 B\u1EA5m m\u1ED9t h\u1ED3 s\u01A1 \u0111\u1EC3 xem chi ti\u1EBFt; \u0111\u00F3ng chi ti\u1EBFt \u0111\u1EC3 quay l\u1EA1i danh s\u00E1ch.</p><div class="status-summary"><span><b>${num(rs.length)}</b> h\u1ED3 s\u01A1</span><span>\u01AF\u1EDBc/duy\u1EC7t BT: <b>${money(s.gMoney + s.tMoney)}</b></span><span>\u0110\u00E3 chi tr\u1EA3 g\u1ED3m VAT: <b>${money(paid)}</b></span></div><div class="tablehead"><h2>Danh s\u00E1ch t\u00F3m t\u1EAFt</h2><button onclick="exportCsv()">Xu\u1EA5t CSV</button></div>${records(rs)}`;
     if (!modal.open)
         modal.showModal();
 }
