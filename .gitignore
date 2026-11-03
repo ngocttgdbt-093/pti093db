@@ -1,0 +1,6 @@
+data.json
+.env*
+.dev.vars*
+*.xlsx
+*.xls
+*.csv
