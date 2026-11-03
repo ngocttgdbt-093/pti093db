@@ -2,7 +2,7 @@
 
 Giao diện GitHub Pages: https://ngocttgdbt-093.github.io/pti093db/
 
-Máy chủ API: https://bao-cao-093.sceniclens.chatgpt.site
+Máy chủ API: https://bao-cao-093.mrngochp.chatgpt.site
 
 Kho chỉ chứa giao diện, biểu đồ và trợ lý tra cứu. Hồ sơ thật và cấu hình đăng nhập được giữ ở máy chủ; không đưa Excel, data.json, mật khẩu hoặc token vào kho.
 

@@ -1,4 +1,4 @@
-const BACKEND="https://bao-cao-093.sceniclens.chatgpt.site";
+const BACKEND="https://bao-cao-093.mrngochp.chatgpt.site";
 async function authFetch(url,options={}){const token=sessionStorage.getItem('pti093_auth');if(!token){location.replace('./login.html');throw Error('Vui lòng đăng nhập lại.')}const headers=new Headers(options.headers);headers.set('Authorization','Bearer '+token);const response=await fetch(new URL(url,BACKEND).href,{...options,headers,credentials:'omit',cache:'no-store'});if(response.status===401){sessionStorage.removeItem('pti093_auth');location.replace('./login.html');throw Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')}return response}
 let importBusy=false,importState=null,importClock=null,REPORT_META={date:'2026-11-02',year:2026,sources:{f:'Phát sinh · bộ gốc',g:'Giải quyết · bộ gốc',t:'Tồn · bộ gốc'}};
 const reportLabel=()=>REPORT_META.date.split('-').reverse().join('/'),reportYear=()=>REPORT_META.year||Number(REPORT_META.date.slice(0,4)),reportMonth=()=>Number(REPORT_META.date.slice(5,7)),reportCutoff=()=>Date.parse(REPORT_META.date+'T00:00:00Z');
