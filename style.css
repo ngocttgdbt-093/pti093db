@@ -170,3 +170,30 @@ body[data-menu-style="ocean"] nav button.active:before{border-radius:50%;backgro
 @media print{.alert-tools,dialog{display:none!important}}
 
 .feedback-link{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:6px;padding:9px 14px;text-decoration:none;color:var(--ink);background:white;font-size:13px}.feedback-link:hover{background:#eef4fa}
+
+
+/* Print overrides must follow the menu skins and responsive screen layout. */
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+  body { background: #fff; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  body aside, .header-actions, .filters, .robo-fab, .robo-panel, .chart-tooltip {
+    display: none !important;
+  }
+  body main { margin: 0 !important; padding: 0 !important; width: 100%; max-width: none; }
+  #content { width: 100%; }
+  .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .grid, .gdv-chart-grid, .gdv-pies, .aging-grid, .business-grid, .money-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .grid > .panel { min-width: 0; padding: 12px; box-shadow: none; }
+  .card { min-width: 0; padding: 12px; box-shadow: none; }
+  .card strong { font-size: 26px; }
+  .pie-layout { flex-direction: column; gap: 10px; }
+  .pie-layout svg { width: 60%; max-width: 180px; }
+  .pie-legend { width: 100%; }
+  .gdv-load-scroll { overflow: visible; }
+  .gdv-load-scroll svg { min-width: 0; width: 100%; }
+}
