@@ -97,6 +97,7 @@ function showStatus(label) {
     if (!modal) {
         modal = document.createElement('dialog');
         modal.id = 'statusList';
+        modal.setAttribute('closedby', 'any');
         modal.addEventListener('close', () => render());
         document.body.appendChild(modal);
     }
