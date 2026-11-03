@@ -294,6 +294,16 @@ function garageGroupKey(r) { return r['Mã garage'] && r['Mã garage'] !== '-' ?
 function showGarageGroup(k) { $('detailBody').innerHTML = '<h2>' + esc(k) + '</h2>' + records(filtered().filter(r => garageGroupKey(r) === k)); $('detail').showModal(); }
 function exportGarage() { groupTable(filtered(), garageGroupKey); exportCsv(); }
 function exportComparison() { groupTable(filtered(), r => $('dim').value === 'Trạng thái hồ sơ' ? reportStatus(r) : r[$('dim').value] || 'Chưa có'); exportCsv(); }
+function updatePrintScope() {
+ const host=$('printScope');if(!host)return;
+ if(page==='Dữ liệu'){host.textContent='Phạm vi: Toàn bộ ba nguồn đã đối soát.';return;}
+ if(page==='Tra cứu hồ sơ'){
+  const q=lookupQuery;
+  host.textContent='Phạm vi tra cứu: '+[q.gdv||'Tất cả GĐV',q.plate?'Biển số: '+q.plate:'',q.claim?'Số hồ sơ: '+q.claim:'',q.garage?'Gara: '+q.garage:'',q.statuses.length?'Trạng thái: '+q.statuses.join(', '):'Tất cả trạng thái'].filter(Boolean).join(' · ');return;
+ }
+ host.textContent='Phạm vi: '+[ $('gdv')?.value||'Tất cả GĐV', $('nv')?.value==='other'?'Nghiệp vụ khác':$('nv')?.value||'Tất cả nghiệp vụ', $('q')?.value?'Tìm kiếm: '+$('q').value:''].filter(Boolean).join(' · ');
+}
+if(typeof window!=='undefined')window.addEventListener('beforeprint',updatePrintScope);
 function render() {
     if (typeof chartTipHide === 'function')
         chartTipHide();

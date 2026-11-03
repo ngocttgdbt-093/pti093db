@@ -1,0 +1,70 @@
+/* Loaded after screen styles and only for printing. Keep paper layout independent
+   of screen breakpoints, navigation themes and scroll-container widths. */
+@page { size: A4 landscape; margin: 10mm; }
+html,body { width:auto!important;min-width:0!important;margin:0!important;padding:0!important;background:white!important;color:#20344b;overflow:visible!important;font:9pt 'Segoe UI',Arial,sans-serif; }
+body { -webkit-print-color-adjust:exact;print-color-adjust:exact; }
+body>aside,nav,.header-actions,.feedback-link,.filters,.lookup-form,
+.robo-fab,.robo-panel,.chart-tooltip,.alert-tools,dialog,dialog::backdrop,
+button,input,select,textarea,.menu-style-picker,.import-panel { display:none!important; }
+main { display:block!important;margin:0!important;padding:0!important;width:100%!important;max-width:none!important;min-width:0!important; }
+#content { width:100%!important;max-width:none!important;min-width:0!important; }
+header { display:block!important;margin:0 0 3mm!important;padding:0!important;break-after:avoid-page; }
+header small { font-size:7pt;letter-spacing:1pt; }
+h1 { font-size:19pt!important;margin:2mm 0!important; }
+h2 { font-size:11pt!important;break-after:avoid-page; }
+h3 { break-after:avoid-page; }
+.source { display:block!important;padding:2mm 3mm!important;margin-bottom:2mm;border:1px solid #d8e5f0;border-radius:2mm;background:#f4f8fc!important;font-size:8pt;break-inside:avoid-page; }
+.source span { display:inline!important; }
+#printScope { display:block!important;margin:2mm 0 3mm;color:#52667d;font-size:8pt;line-height:1.5;break-after:avoid-page; }
+.kpis { display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:3mm!important;margin:0 0 4mm!important;break-inside:avoid-page; }
+.card { padding:3mm!important;border-radius:2mm!important;box-shadow:none!important;break-inside:avoid-page; }
+.card small,.card em { font-size:7.5pt!important; }
+.card strong { font-size:22pt!important;margin:2mm 0!important; }
+.grid,.gdv-pies,.gdv-chart-grid,.aging-grid,.business-grid,.money-grid {
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:4mm!important;margin-bottom:4mm!important;break-inside:avoid-page;align-items:start;
+}
+.grid>* { min-width:0!important;max-width:100%!important; }
+.panel { padding:3mm!important;border-radius:2mm!important;box-shadow:none!important;break-inside:avoid-page; }
+.panel:has(table),.gdv-report,.gdv-summary,.oldest-report,.analysis-comparison,.lookup-results,.service-axis,.quality-box,.outlook { break-inside:auto!important;overflow:visible!important; }
+.grid:has(table) { break-inside:auto!important; }
+.panel p.note,.legend,.service-method { font-size:7.5pt!important;line-height:1.5!important;margin:1.5mm 0 2mm!important; }
+.depth-ring,.aging-ring { max-width:48mm!important;margin:0 auto 2mm!important; }
+.gdv-load-scroll,.tablewrap,.status-scroll,.oldest-scroll,.lookup-scroll,
+:is(#groups,.analysis-garage)>.tablewrap,.gdv-summary>.tablewrap {
+ display:block!important;max-height:none!important;height:auto!important;overflow:visible!important;width:100%!important;max-width:none!important;min-width:0!important;scrollbar-gutter:auto!important;
+}
+.gdv-load-scroll svg,.gdv-detail-charts .gdv-load-scroll svg,.aging-panel>svg { width:100%!important;min-width:0!important;max-width:100%!important;height:auto!important; }
+.pie-layout { display:flex!important;flex-direction:row!important;gap:2mm!important; }
+.pie-layout>svg { width:42%!important;max-width:45mm!important; }
+.pie-legend>div,.business-legend>div,.aging-key>div { font-size:7.5pt!important;padding:1.5mm 0!important;gap:1.5mm!important; }
+.aging-key { grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:1mm 3mm!important; }
+.gdv-chart-grid .business-legend { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+.ring-detail { min-height:0!important;font-size:7pt; }
+.pie-total,.gdv-chart-key,.gdv-detail-key { font-size:7.5pt!important;margin-top:2mm!important; }
+table,.gdv-matrix,.monthly-matrix,.gdv-summary table,.oldest-scroll table,.lookup-scroll table,.analysis-garage>.tablewrap table {
+ width:100%!important;min-width:0!important;max-width:100%!important;font-size:7.5pt!important;
+}
+thead { display:table-header-group!important; }
+tfoot { display:table-row-group!important; }
+tr { break-inside:avoid-page;page-break-inside:avoid; }
+#content th,#content td { position:static!important;height:auto!important;min-width:0!important;max-width:none!important;padding:1.8mm 1.3mm!important;font-size:inherit!important;white-space:normal!important;overflow-wrap:anywhere; }
+.status-scroll thead,.status-scroll tfoot { position:static!important; }
+.gdv-matrix,.monthly-matrix,.lookup-scroll table,.oldest-scroll table { table-layout:fixed;font-size:6.5pt!important; }
+.gdv-matrix th,.monthly-matrix th,.lookup-scroll th { text-transform:none!important;letter-spacing:0!important; }
+.gdv-matrix th:first-child,.monthly-matrix th:first-child,.lookup-scroll th:first-child { width:7mm; }
+.gdv-matrix td:nth-child(2),.monthly-matrix td:nth-child(2) { width:auto!important; }
+.gdv-badge { white-space:normal!important;padding:1mm!important; }
+.lookup-results-head,.oldest-title,.gdv-report-title,.tablehead { padding:2mm!important;margin:0!important;break-after:avoid-page; }
+.outlook { background:#f0f3f8!important;color:#20344b!important;padding:3mm!important; }
+.outlook h2,.outlook strong,.outlook-card.month strong,.outlook-card.quarter strong { color:#20344b!important; }
+.outlook-grid { display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:3mm!important; }
+.outlook-card,.quality-box li { break-inside:avoid-page;padding:2.5mm!important;font-size:8pt!important;line-height:1.5!important; }
+.quality-box li { padding-left:8mm!important; }
+.service-hero,.service-axis { padding:3mm!important;margin-bottom:4mm!important; }
+.service-axis-head,.service-hero { break-after:avoid-page; }
+.service-axis-head p,.service-hero>p,.gdv-report-notes,.oldest-note,.lookup-legend { font-size:7.5pt!important;line-height:1.5!important; }
+footer { position:static!important;display:flex!important;justify-content:space-between;margin-top:3mm!important;font-size:7pt!important; }
+footer span { display:inline!important; }
+*,*::before,*::after { animation:none!important;transition:none!important;box-shadow:none!important;text-shadow:none!important; }
+a { color:inherit!important;text-decoration:none!important; }
