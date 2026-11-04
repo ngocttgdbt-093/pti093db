@@ -170,6 +170,17 @@ body[data-menu-style="ocean"] nav button.active:before{border-radius:50%;backgro
 @media print{.alert-tools,dialog{display:none!important}}
 
 .robo-log{overflow-anchor:none;scroll-behavior:auto}.robo-scroll-space{height:0;pointer-events:none}
+.robo-top,.robo-toolbar,.robo-panel form,.robo-panel>small{flex-shrink:0}
+.robo-panel form{position:relative;z-index:1}
+@media(max-width:600px),(pointer:coarse){
+ .robo-panel form input,.robo-toolbar select{font-size:16px}
+ .robo-panel form{padding-bottom:max(10px,env(safe-area-inset-bottom,0px))}
+ .robo-panel[data-keyboard="true"] .robo-top{padding:9px 12px}
+ .robo-panel[data-keyboard="true"] .robo-top small{display:none}
+ .robo-panel[data-keyboard="true"] .robo-toolbar{padding:5px 10px}
+ .robo-panel[data-keyboard="true"] form{padding:8px}
+ .robo-panel[data-keyboard="true"]>small{display:none}
+}
 
 .status-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:8px}.status-heading h2{margin:0!important}.status-toggle{display:inline-flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid #c9deef;border-radius:7px;background:#f0f7fd;color:#28577e;font-size:12px;cursor:pointer;white-space:nowrap}.status-toggle input[type=checkbox]{width:16px;min-width:16px;height:16px;margin:0;padding:0;accent-color:#1978cb;cursor:pointer}.status-scope{margin-bottom:8px!important}.status-toggle:has(input:checked){background:#e1f0fc;border-color:#78afe0}@media(max-width:600px){.status-heading{justify-content:center}.status-heading h2{flex-basis:100%;text-align:center}.status-toggle{font-size:12px}}
 
