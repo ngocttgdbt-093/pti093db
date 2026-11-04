@@ -59,7 +59,7 @@ function refreshAlerts() {
  const model=alertModel(DATA,REPORT_META.date,alertState.gdv);alertState.model=model;
  const badge=$('alertBadge'),button=$('alertBell'),unread=model.categories.length>0&&alertState.seen[model.gdv]!==alertSignature(model);
  badge.textContent=model.categories.length;badge.hidden=!model.categories.length;
- button.classList.toggle('alert-unread',unread);button.setAttribute('aria-label',`Cảnh báo: ${model.categories.length} đầu mục · ${model.gdv||'Tất cả GĐV'}`);
+ button.classList.toggle('alert-active',model.categories.length>0);button.classList.toggle('alert-unread',unread);button.setAttribute('aria-label',`Cảnh báo: ${model.categories.length} đầu mục · ${model.gdv||'Tất cả GĐV'}`);
  button.title=model.categories.length?`${model.categories.length} đầu mục · ${model.unique} hồ sơ không trùng · Chốt ${reportLabel()}`:'Không có cảnh báo · Chốt '+reportLabel();
  if($('alertsDialog').open)drawAlertSummary();
  if($('alertRecordsDialog').open)drawAlertRecords(alertState.category);
