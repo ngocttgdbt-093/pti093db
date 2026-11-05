@@ -18,6 +18,7 @@ async function checkDatasetSync(){
   if(state.running){if(typeof importBusy!=='undefined'&&importBusy)return;datasetSyncBlocked=true;showDatasetSyncNotice();return;}
   if(typeof importBusy!=='undefined'&&importBusy)return;
   if(datasetSyncBlocked||(typeof REPORT_META!=='undefined'&&state.activeDate&&state.activeDate!==REPORT_META.date)){location.reload();return;}
+  if(state.datasetUpdate&&typeof renderDatasetSource==='function')renderDatasetSource(state.datasetUpdate);
   hideDatasetSyncNotice();
  }catch{}finally{datasetSyncChecking=false;}
 }
