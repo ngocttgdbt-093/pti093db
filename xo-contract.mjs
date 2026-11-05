@@ -22,5 +22,10 @@ export function parseXoPages(pages){
    if(!seen.has(0)||!seen.has(8))throw Error(code+': thiếu doanh thu hoặc tỷ lệ');rows.push({code,revenue:cols[0],resolved:cols[4],outstanding:cols[5],total:cols[6],prior:cols[7],sourceRate:cols[8]});
   }
  }
- const dates=[...text.matchAll(/\b(\d{2})\/(\d{2})\/(\d{4})\b/g)].map(m=>`${m[3]}-${m[2]}-${m[1]}`);if(dates.length<2)throw Error('Không đọc được ngày bắt đầu và ngày chốt trong PDF');return validateXoReport({from:dates[0],to:dates[1],rows});
+ // Read the labelled reporting period in the heading, not print dates or table dates.
+ const heading=pages.slice(0,1).flatMap(p=>{const codes=p.items.filter(i=>/^XO(?:\.\d+)*$/.test(i.str.trim())&&i.x<p.width*.1);const top=codes.length?Math.max(...codes.map(i=>i.y)):-Infinity;return p.items.filter(i=>i.y>top+2).sort((a,b)=>Math.abs(b.y-a.y)>2?b.y-a.y:a.x-b.x).map(i=>i.str)}).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d');
+ const period=heading.match(/tu\s*(?:ngay\s*)?(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\s*(?:den|toi|[-–—])\s*(?:het\s*)?(?:ngay\s*)?(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/i);
+ if(!period)throw Error('Không đọc được thời gian báo cáo “Từ ngày … đến ngày …” trong tiêu đề PDF; chưa cập nhật');
+ const iso=(d,m,y)=>`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+ return validateXoReport({from:iso(...period.slice(1,4)),to:iso(...period.slice(4,7)),rows});
 }
