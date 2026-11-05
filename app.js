@@ -338,6 +338,14 @@ function render() {
     }
     if(page==='Giám định viên')html+=historyPanel()+smallCostPanel();
     $('content').innerHTML = html;
+    // Keep PDF-based loss ratios and XO.4 summary above the claim-record filters.
+    // Move the existing filter DOM node only after replacing the content, so navigation cannot destroy it.
+    const recordFilters = document.querySelector('section.filters');
+    const printScopeNode = $('printScope');
+    if (recordFilters && printScopeNode) {
+        if (page === 'Phân tích CP & BT') $('content').appendChild(recordFilters);
+        else printScopeNode.parentElement.insertBefore(recordFilters, printScopeNode);
+    }
     if(page==='Tổng quan'||page==='Cải tiến CLDV')loadAiAnalysis();
     if(['Tổng quan','Giám định viên','Cải tiến CLDV','Phân tích CP & BT'].includes(page))loadHistoryPanels();
     if (page === 'Dữ liệu'){showImportProgress();loadPtiSyncStatus();loadXoReport();}
