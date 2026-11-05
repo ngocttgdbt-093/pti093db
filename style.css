@@ -208,3 +208,8 @@ body[data-menu-style="ocean"] nav button.active:before{border-radius:50%;backgro
 .xo-source-status{margin:16px 20px;padding:14px 16px;border:1px solid #d9e6f0;border-radius:8px;background:#f4f9fd;font-size:12px;line-height:1.7;overflow-wrap:anywhere}.xo-source-status p{margin:5px 0}.manual-import-results{display:grid;gap:12px;margin-top:16px}.manual-import-results>div{margin:0}.import-skipped{padding:14px 18px;border:1px solid #dce6ed;border-radius:8px;color:#738597;background:#f8fafc}
 
 .feedback-link{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:6px;padding:9px 14px;text-decoration:none;color:var(--ink);background:white;font-size:13px}.feedback-link:hover{background:#eef4fa}
+
+/* Dataset status must remain readable at every viewport width. */
+.source #datasetUpdateText{display:block;min-width:0;overflow-wrap:anywhere}
+.source>div{width:100%}
+.source[hidden]{display:none}
