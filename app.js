@@ -337,6 +337,9 @@ function render() {
         html += `<div class="banner">C\u00F3 th\u1EC3 c\u1EADp nh\u1EADt t\u1EEB Excel tr\u00EAn m\u00E1y ho\u1EB7c th\u01B0 m\u1EE5c Google Drive c\u00F4ng khai. Ch\u1EC9 b\u1ED9 \u0111\u1EA7y \u0111\u1EE7 m\u1EDBi h\u01A1n \u0111\u01B0\u1EE3c k\u00EDch ho\u1EA1t.</div><div class="panel"><h2>B\u1ED9 ngu\u1ED3n ng\u00E0y ${(reportLabel())}</h2>` + table(['Nguồn', 'Số hồ sơ', 'Trạng thái'], [[REPORT_META.sources.f, DATA.f.length], [REPORT_META.sources.g, DATA.g.length], [REPORT_META.sources.t, DATA.t.length]].map(([k, v]) => `<tr><td>${k}</td><td>${num(v)}</td><td><span class="pill">\u0110\u00E3 \u0111\u1ECDc v\u00E0 \u0111\u1ED1i so\u00E1t</span></td></tr>`)) + '<p class="note">Nhận diện theo tiêu đề và ngày bên trong Excel; chỉ cập nhật khi đủ bộ và đối soát hợp lệ.<br>Các khoản tiền ngăn bằng dấu ; được cộng lại, giữ giá trị gốc trong chi tiết hồ sơ.<br>Giữ nguyên 63 trường của nguồn Giải quyết/Tồn, gồm các cột trả gara, tạm ứng và thu hồi để tra cứu chi tiết.<br>Nguồn doanh thu & tỷ lệ bồi thường XO được cập nhật riêng bằng PDF tháng.</p></div>';
     }
     if(page==='Giám định viên')html+=historyPanel()+smallCostPanel();
+    // Rescue persistent controls before replacing content from the previous menu.
+    const persistentFilters = document.querySelector('section.filters');
+    if (persistentFilters) $('printScope').before(persistentFilters);
     $('content').innerHTML = html;
     // Keep PDF-based loss ratios and XO.4 summary above the claim-record filters.
     // Move the existing filter DOM node only after replacing the content, so navigation cannot destroy it.
@@ -350,7 +353,7 @@ function render() {
     if(['Tổng quan','Giám định viên','Cải tiến CLDV','Phân tích CP & BT'].includes(page))loadHistoryPanels();
     if (page === 'Dữ liệu'){showImportProgress();loadPtiSyncStatus();loadXoReport();}
     if(page === 'Phân tích CP & BT')loadXoReport();
-    document.querySelector('.filters').hidden = page === 'Tra cứu hồ sơ';
+    document.querySelector('.filters').hidden = ['Tra cứu hồ sơ', 'Dữ liệu'].includes(page);
     if (page === 'Tra cứu hồ sơ')
         bindLookup();
     if (page === 'Phân tích HS tồn') {
