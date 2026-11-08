@@ -20,7 +20,7 @@ document.addEventListener('click', event => {
 });
 let CLAIM_INDEX;
 let DATA, ROWS = [], page = 'Tổng quan', currentExport = [];
-const pages = ['Tổng quan', 'Giám định viên', 'Phân tích HS tồn', 'Phân tích CP & BT', 'Cải tiến CLDV', 'Tra cứu hồ sơ', 'Dữ liệu'];
+const pages = ['Tổng quan', 'Giám định viên', 'Phân tích HS tồn', 'Phân tích CP & BT', 'Cải tiến CLDV', 'Tra cứu hồ sơ', 'Dữ liệu', 'Quản trị GĐV'];
 const $ = id => document.getElementById(id), esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])), num = v => new Intl.NumberFormat('vi-VN').format(v), money = v => v >= 1e9 ? (v / 1e9).toLocaleString('vi-VN', { maximumFractionDigits: 3 }) + ' tỷ' : v >= 1e6 ? (v / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' tr' : num(v) + ' đ', pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '—', norm = v => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase(), id = r => r['Số HSBT'], sum = (rs, k) => rs.reduce((s, r) => s + (Number(r[k]) || 0), 0), garage = r => r['Tên garage (thường gọi)'] && r['Tên garage (thường gọi)'] !== '-' ? r['Tên garage (thường gọi)'] : r['Tên garage (ĐKKD)'] || 'Chưa có gara';
 function sourceMoney(v) { if (v === null || v === undefined || String(v).trim() === '' || v === '-')
     return 0; if (typeof v === 'number') {
@@ -343,6 +343,7 @@ function render() {
         html = ptiSyncPanel() + importPanel() + '<div class="banner">Đối soát toàn bộ ba nguồn, không chịu ảnh hưởng bộ lọc. Khóa đối chiếu: Số HSBT đầy đủ.</div><div class="panel"><h2>Quan hệ ba nguồn</h2>' + table(['Nhóm', 'Đã giải quyết', 'Tồn', 'Tổng'], [[`Ph\u00E1t sinh ${(reportYear())}`, [...f].filter(k => g.has(k)).length, [...f].filter(k => t.has(k)).length, f.size], [`Tr\u01B0\u1EDBc ${(reportYear())}`, [...g].filter(k => !f.has(k)).length, [...t].filter(k => !f.has(k)).length, ROWS.filter(r => r._year !== String(reportYear())).length], ['Tổng', g.size, t.size, ROWS.length]].map(r => '<tr>' + r.map(v => '<td>' + esc(num(v) === 'NaN' ? v : num(v)) + '</td>').join('') + '</tr>')) + '<p class="note">✓ Không trùng nội bộ từng nguồn · ✓ Không giao nhau giữa Giải quyết và Tồn · ✓ Phát sinh được phân loại đầy đủ.<br>Ngày mở và số tiền có thể khác giữa nguồn. Phân năm dựa trên sự có mặt trong file Phát sinh; thông tin hồ sơ lấy từ nguồn Giải quyết hoặc Tồn.</p></div>';
         html += `<div class="banner">C\u00F3 th\u1EC3 c\u1EADp nh\u1EADt t\u1EEB Excel tr\u00EAn m\u00E1y ho\u1EB7c th\u01B0 m\u1EE5c Google Drive c\u00F4ng khai. Ch\u1EC9 b\u1ED9 \u0111\u1EA7y \u0111\u1EE7 m\u1EDBi h\u01A1n \u0111\u01B0\u1EE3c k\u00EDch ho\u1EA1t.</div><div class="panel"><h2>B\u1ED9 ngu\u1ED3n ng\u00E0y ${(reportLabel())}</h2>` + table(['Nguồn', 'Số hồ sơ', 'Trạng thái'], [[REPORT_META.sources.f, DATA.f.length], [REPORT_META.sources.g, DATA.g.length], [REPORT_META.sources.t, DATA.t.length]].map(([k, v]) => `<tr><td>${k}</td><td>${num(v)}</td><td><span class="pill">\u0110\u00E3 \u0111\u1ECDc v\u00E0 \u0111\u1ED1i so\u00E1t</span></td></tr>`)) + '<p class="note">Nhận diện theo tiêu đề và ngày bên trong Excel; chỉ cập nhật khi đủ bộ và đối soát hợp lệ.<br>Các khoản tiền ngăn bằng dấu ; được cộng lại, giữ giá trị gốc trong chi tiết hồ sơ.<br>Giữ nguyên 63 trường của nguồn Giải quyết/Tồn, gồm các cột trả gara, tạm ứng và thu hồi để tra cứu chi tiết.<br>Nguồn doanh thu & tỷ lệ bồi thường XO được cập nhật riêng bằng PDF tháng.</p></div>';
     }
+    if(page==='Quản trị GĐV')html=mailAdminPanel();
     if(page==='Giám định viên')html+=healthPanel()+historyPanel()+smallCostPanel();
     // Rescue persistent controls before replacing content from the previous menu.
     const persistentFilters = document.querySelector('section.filters');
@@ -359,9 +360,10 @@ function render() {
     if(page==='Giám định viên')loadBacklogHistory();
     if(page==='Tổng quan'||page==='Cải tiến CLDV')loadAiAnalysis();
     if(['Tổng quan','Giám định viên','Cải tiến CLDV','Phân tích CP & BT'].includes(page))loadHistoryPanels();
+    if(page==='Quản trị GĐV')loadMailAdmin();
     if (page === 'Dữ liệu'){showImportProgress();loadPtiSyncStatus();loadXoReport();}
     if(page === 'Phân tích CP & BT')loadXoReport();
-    document.querySelector('.filters').hidden = ['Tra cứu hồ sơ', 'Dữ liệu'].includes(page);
+    document.querySelector('.filters').hidden = ['Tra cứu hồ sơ', 'Dữ liệu', 'Quản trị GĐV'].includes(page);
     recordFilters.classList.toggle('cost-scope-filter', page === 'Phân tích CP & BT');
     if (page === 'Tra cứu hồ sơ')
         bindLookup();
