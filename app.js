@@ -46,7 +46,7 @@ function prepare(d) { const f = new Set(d.f.map(id)), g = new Set(d.g.map(id)), 
     throw Error('Hồ sơ đồng thời ở nguồn Giải quyết và Tồn'); if ([...f].some(k => !g.has(k) && !t.has(k)))
     throw Error('Hồ sơ phát sinh chưa được phân loại'); return [...d.g.map(r => ({ ...r, _state: 'Đã giải quyết', _year: f.has(id(r)) ? String(reportYear()) : 'Trước ' + reportYear() })), ...d.t.map(r => ({ ...r, _state: 'Tồn', _year: f.has(id(r)) ? String(reportYear()) : 'Trước ' + reportYear() }))]; }
 function filtered(source = ROWS) { let q = norm($('q').value), nv = $('nv').value; return source.filter(r => (!$('gdv').value || r['GĐV thụ lý'] === $('gdv').value) && (!nv || (nv === 'other' ? !/^XO\.[14]/.test(r['Mã nghiệp vụ']) : String(r['Mã nghiệp vụ']).startsWith(nv))) && (!q || norm([id(r), r['Biển số xe'], garage(r), r['GĐV thụ lý']].join(' ')).includes(q))); }
-function go(p) { page = p; document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.textContent === p)); render(); window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }
+function go(p) { if(typeof dashboardMotionNavigate==='function')dashboardMotionNavigate(); page = p; document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.textContent === p)); render(); window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }
 ;
 function resetFilters() { $('gdv').value = ''; $('nv').value = ''; $('q').value = ''; render(); }
 const card = (label, value, note, cls = '') => `<div class="card ${cls}"><small>${label}</small><strong>${value}</strong><em>${note}</em></div>`;
@@ -373,6 +373,7 @@ function render() {
         $('content').insertAdjacentHTML('beforeend', '<section class="panel analysis-comparison analysis-garage"><div class="tablehead"><h2>Gara / Showroom</h2><button onclick="exportGarage()">Xuất CSV</button></div><p class="note">Nhóm bằng mã gara; hồ sơ thiếu mã được giữ trong nhóm riêng. Bấm nhóm để xem chi tiết.</p>' + groupTable(rs, garageGroupKey).replaceAll('showGroup(', 'showGarageGroup(') + '</section>');
 
     }
+    if(typeof dashboardMotionRender==='function')dashboardMotionRender();
 }
 function setMenuStyle(style) { if (!['classic', 'light', 'ocean'].includes(style))
     style = 'classic'; document.body.dataset.menuStyle = style; document.querySelectorAll('[data-style]').forEach(b => { const active = b.dataset.style === style; b.classList.toggle('chosen', active); b.setAttribute('aria-pressed', String(active)); }); try {
