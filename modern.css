@@ -1,0 +1,38 @@
+/* PTI Modern Glass: screen styling is separate from report printing. */
+@media screen{
+:root{--navy:#12354c;--blue:#176ba4;--ink:#193a50;--muted:#5d7385;--line:#d9e5ed;--bg:#eff6fa}
+body{background:radial-gradient(ellipse at 7% 4%,#bce9e5 0,transparent 42%),radial-gradient(ellipse at 94% 80%,#c7e1f2 0,transparent 48%),linear-gradient(140deg,#eaf4f6,#f5f8fc 58%,#e6f3f4);background-attachment:fixed;line-height:1.5}
+body[data-menu-style]>aside{inset:14px auto 14px 14px;width:222px;height:calc(100dvh - 28px);padding:24px 14px;border:1px solid #ffffff35;border-radius:24px;background:radial-gradient(ellipse at 0 0,#21778080,transparent 60%),linear-gradient(155deg,#123e54,#112e47 75%);box-shadow:0 16px 40px #143b511e;overflow-y:auto;z-index:20}
+.brand{padding:4px 12px 24px}.brand-row img{filter:drop-shadow(0 3px 6px #061e3633)}
+body[data-menu-style] nav button{border:1px solid transparent;border-left:3px solid transparent;border-radius:13px;color:#d3e3eb;padding:12px;margin:6px 0;font-size:13px;transition:background .2s,color .2s,box-shadow .2s}
+body[data-menu-style] nav button:hover{background:#ffffff12;color:#fff}
+body[data-menu-style] nav button.active{background:linear-gradient(105deg,#258b9e88,#3179a54d);border-color:#ffffff18;border-left-color:#f4bc5d;color:#fff;box-shadow:0 5px 16px #09283b20}
+.asidefoot{position:static;margin:32px 10px 8px;color:#c2d7e4}.asidefoot small{color:#a6c0d0}
+main{margin-left:250px;padding:24px 30px 35px;min-width:0;max-width:1920px}
+main>header{padding:19px 22px;border:1px solid #ffffffc9;border-radius:21px;background:#ffffffdd;box-shadow:0 8px 30px #285c7410;gap:18px;margin-bottom:18px}
+h1{font-size:clamp(22px,2.2vw,30px);letter-spacing:-.5px;color:#153d55}main>header small{color:#526f83}
+.header-actions{gap:9px;flex-wrap:wrap}.header-actions>button{font-size:12px;white-space:nowrap}
+.source{padding:13px 19px;border-radius:15px;background:linear-gradient(110deg,#ffffffec,#eaf5f7e8);border:1px solid #fff;box-shadow:0 6px 22px #23536c09}
+.filters{padding:16px 18px;border:1px solid #ffffffd9;border-radius:18px;background:#ffffffc9;box-shadow:0 6px 24px #1f4b6610;flex-wrap:wrap;gap:14px;margin:19px 0}
+.filters label{color:#526b7e;min-width:0}.filters input,.filters select{width:100%;min-width:0}.filters label:has(input){flex:1;min-width:220px}
+button,input,select,textarea{border-radius:12px;border-color:#d1e0e9}input,select{height:42px;background:#ffffffee}
+button{transition:background .18s,box-shadow .18s,border-color .18s}button:hover{box-shadow:0 3px 12px #1f587314;border-color:#accddd}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #208bae88;outline-offset:3px}
+.import-primary,.db-admin-submit{background:linear-gradient(115deg,#176da7,#208a9b);color:#fff;border-color:transparent;box-shadow:0 5px 12px #1e789125}
+.import-primary:hover,.db-admin-submit:hover{background:linear-gradient(115deg,#145c92,#197b8b);color:#fff}
+button:disabled{cursor:default;box-shadow:none;opacity:.65}
+.card,.panel,.service-hero,.history-panel,.health-panel,.backlog-history-panel{border-radius:20px;border-color:#ffffffdc;background:#ffffffeb;box-shadow:0 8px 27px #19435f0d}
+.card{padding:21px 22px;background:linear-gradient(145deg,#ffffffed,#f4fafbdd);transition:box-shadow .2s,transform .2s}.card:hover{box-shadow:0 13px 30px #1d58661b;transform:translateY(-3px)}.card strong{font-variant-numeric:tabular-nums;font-size:clamp(25px,2.4vw,33px);color:#17425d}.card em{color:#526d82}.card.accent{border-top-color:#e7a746}.card.good{border-top-color:#2d9d80}
+.panel h2,.service-hero h2,.health-heading h2{color:#214e66}.grid>*{min-width:0}.panel .tablewrap{border-radius:12px}table{font-variant-numeric:tabular-nums}thead th{background:#e7f1f7;color:#315970}tbody tr:hover{background:#edf7fa}.pill{border-radius:8px}
+.history-heading{background:linear-gradient(110deg,#174760,#237d94)}.history-kpis>div,.service-kpis>div{border-radius:15px;background:linear-gradient(140deg,#fff,#edf7fa);box-shadow:0 4px 15px #254c6010}
+.history-charts>div,.backlog-history-charts>div,.cohort-chart{border-radius:16px;background:linear-gradient(160deg,#ffffff,#f8fbfd)}.history-svg svg{overflow:visible}.history-svg{padding-top:5px}.history-svg circle{cursor:pointer}
+.chart-tooltip{border-radius:15px;box-shadow:0 12px 38px #173f5725}dialog{border-radius:20px;border:1px solid #e1ebf0;box-shadow:0 25px 80px #0a2c4a35}dialog::backdrop{background:#102e4960;backdrop-filter:blur(3px)}
+.missing,.banner,.import-error,.import-success{border-radius:13px}footer{color:#607b8d}.money{font-variant-numeric:tabular-nums}
+@supports(backdrop-filter:blur(12px)){main>header,.source,.filters{backdrop-filter:blur(14px)}}
+}
+@media screen and (max-width:1100px){main{padding:20px}main>header{align-items:flex-start;flex-wrap:wrap}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.header-actions{max-width:100%}}
+@media screen and (max-width:760px){body[data-menu-style]>aside{position:static;inset:auto;width:auto;height:auto;margin:10px 10px 0;padding:12px;border-radius:20px;overflow:visible}.brand{padding:0 8px 8px}.brand-row{justify-content:flex-start}.brand-row img{width:48px;height:auto}.brand b{font-size:34px}.brand small,.asidefoot{display:none}body[data-menu-style]>aside nav{display:flex;gap:5px;overflow-x:auto;padding-bottom:3px;scrollbar-width:thin}body[data-menu-style] nav button{width:auto;flex:0 0 auto;white-space:nowrap;margin:0;padding:10px 13px;border-left:0;border-bottom:3px solid transparent}body[data-menu-style] nav button.active{border-bottom-color:#f4bc5d}main{margin-left:0;padding:12px}main>header{padding:16px;border-radius:18px}.filters{padding:13px;gap:12px}.filters label{flex:1 1 140px}.filters label:has(input){flex-basis:100%;min-width:0}.grid{gap:14px}.card,.panel{padding:16px;border-radius:17px}.card strong{font-size:26px}.history-heading{border-radius:16px 16px 0 0}.header-actions{width:100%;justify-content:flex-start}.header-actions>button{font-size:11px;padding:9px}.source{font-size:11px;padding:12px}.source #datasetUpdateText{display:inline}.health-panel{margin:15px 0}.health-scope b{font-size:20px}}
+@media screen and (max-width:420px){h1{font-size:23px}.kpis{gap:11px}.card{padding:14px}.card small{font-size:11px}.card em{font-size:10px}.card strong{font-size:24px;margin:10px 0}.header-actions{gap:7px}.header-actions>button{padding:8px}}
+/* Stop decorative motion without changing SVG data geometry or visibility. */
+body[data-dashboard-motion="off"] *,body[data-dashboard-motion="off"] *::before,body[data-dashboard-motion="off"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.card:hover{transform:none!important}}
+@media print{*,*::before,*::after{animation:none!important;transition:none!important}.card,.panel,.health-panel,.backlog-history-panel{box-shadow:none!important;backdrop-filter:none!important}.card:hover{transform:none!important}}
