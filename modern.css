@@ -36,3 +36,5 @@ button:disabled{cursor:default;box-shadow:none;opacity:.65}
 body[data-dashboard-motion="off"] *,body[data-dashboard-motion="off"] *::before,body[data-dashboard-motion="off"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.card:hover{transform:none!important}}
 @media print{*,*::before,*::after{animation:none!important;transition:none!important}.card,.panel,.health-panel,.backlog-history-panel{box-shadow:none!important;backdrop-filter:none!important}.card:hover{transform:none!important}}
+
+.mail-table{overflow-x:auto}.mail-table input:not([type=checkbox]){min-width:145px;width:100%}.mail-table table{min-width:760px}.mail-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:18px 0}.mail-preview{width:min(95vw,850px);height:90vh}.mail-preview iframe{width:100%;height:calc(100% - 50px);border:0}#mailLogin form{display:grid;gap:14px}#mailLogin input{display:block;width:100%}@media print{#mailAdmin,#mailLogin,.mail-preview{display:none!important}}
