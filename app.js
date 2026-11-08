@@ -62,6 +62,7 @@ function renderWithSearchFocus(event) {
     if (selection && selection[0] !== null && selection[1] !== null) next.setSelectionRange(...selection);
 }
 function backlogAgeBand(value) {
+    if (value === null || value === undefined || String(value).trim() === '' || String(value).trim() === '-') return 'unknown';
     const age = Number(value);
     if (!Number.isFinite(age) || age < 0) return 'unknown';
     if (age <= 30) return 'under30';
@@ -101,7 +102,7 @@ function pieGdv(rs, label) { const counts = new Map(); rs.forEach(r => counts.se
     return '<div class="empty">Không có hồ sơ phù hợp bộ lọc.</div>'; const palette = ['#dc4545', '#eb7738', '#eea336', '#e3c643', '#a9bb52', '#65a86a', '#328d79'], a = entries.map(([key, count], i) => ({ label: key, count, color: palette[entries.length === 1 ? 0 : Math.round(i * 6 / (entries.length - 1))] })); return `<div class="pie-layout">${depthRing(a, 'count', 'hồ sơ ' + label)}<div class="pie-legend">${a.map(x => `<div><i style="background:${x.color}"></i><span>${esc(x.label)}</span><b>${num(x.count)}</b><small>${pct(x.count, rs.length)}</small></div>`).join('')}</div></div><div class="pie-total">T\u1ED5ng <b>${num(rs.length)}</b> h\u1ED3 s\u01A1 ${esc(label)}</div>`; }
 function agingData(rs) {
     return [
-        { label: 'Trong hạn', range: '0–30 ngày', color: '#10b987', light: '#70ddbc', value: rs.filter(r => Number.isFinite(Number(r['Số ngày tồn'])) && Number(r['Số ngày tồn']) >= 0 && Number(r['Số ngày tồn']) <= 30).length },
+        { label: 'Trong hạn', range: '0–30 ngày', color: '#10b987', light: '#70ddbc', value: rs.filter(r => backlogAgeBand(r['Số ngày tồn']) === 'under30').length },
         { label: 'Sắp đến hạn', range: '31–44 ngày', color: '#f2ac16', light: '#ffda80', value: rs.filter(r => backlogAgeBand(r['Số ngày tồn']) === '31to44').length },
         { label: 'Cần ưu tiên', range: '45–90 ngày', color: '#f47c28', light: '#ffb472', value: rs.filter(r => backlogAgeBand(r['Số ngày tồn']) === '45to90').length },
         { label: 'Cảnh báo đỏ', range: 'Trên 90 ngày', color: '#e64c57', light: '#ff9298', value: rs.filter(r => backlogAgeBand(r['Số ngày tồn']) === 'over90').length }
