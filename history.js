@@ -25,13 +25,14 @@ async function historyDetailPage(offset){const request=historyDetailRequest,p=ne
 let alertHistoryEpoch=0;
 async function loadAlertHistory(){const dialog=$('alertsDialog');if(!dialog.open)return;let body=$('alertHistoryPanel');if(!body){body=document.createElement('section');body.id='alertHistoryPanel';$('alertsGroups').after(body)}const epoch=++alertHistoryEpoch,scope=alertState.gdv;body.innerHTML='<p class="note">Đang đối chiếu diễn biến cảnh báo…</p>';try{const report=await historyFetch(scope,'7','previous','');if(epoch!==alertHistoryEpoch||!dialog.open)return;body.innerHTML='<h3>Diễn biến so với kỳ trước</h3>'+historyCompare(report,true)+'<details><summary>Xem đánh giá diễn biến</summary>'+historyAssessment(report)+'</details>';if(report.comparison)document.querySelectorAll('#alertsGroups .alert-group').forEach((button,i)=>{const group=alertState.model.categories[i],change=report.comparison.changes.find(x=>x.key===group?.key);if(change){const small=button.querySelector('small');if(small&&!small.querySelector('.history-inline-delta')){const span=document.createElement('span');span.className='history-inline-delta';span.textContent=' · '+historyDelta(change.delta)+' so với kỳ trước';small.append(span)}}})}catch(e){if(epoch===alertHistoryEpoch)body.innerHTML=historyError(e)}}
 
-let backlogHistoryEpoch=0,backlogHistoryState=null;
-function backlogHistoryPanel(){return `<section class="panel backlog-history-panel"><h2>DIỄN BIẾN HỒ SƠ TỒN THEO NGÀY SỐ LIỆU</h2><p class="note">Theo GĐV đang chọn · Toàn bộ nghiệp vụ · Chỉ hiển thị các ngày có báo cáo thực tế.</p><div id="backlogHistoryBody" aria-live="polite">Đang đọc lịch sử tổng hợp…</div></section>`;}
+let backlogHistoryEpoch=0,backlogHistoryState=null,healthMonth='';
+function backlogHistoryPanel(){return `<section class="panel backlog-history-panel"><h2>DIỄN BIẾN HỒ SƠ TỒN THEO NGÀY SỐ LIỆU</h2><p class="note">Theo GĐV đang chọn · Toàn bộ nghiệp vụ · Chỉ hiển thị các ngày có báo cáo thực tế.</p><div id="backlogHistoryBody" aria-live="polite">Đang đọc lịch sử tổng hợp…</div>${healthPanel()}</section>`;}
 async function loadBacklogHistory(){
- if(!$('backlogHistoryBody'))return;const epoch=++backlogHistoryEpoch,scope=historyScope();
- try{const r=await authFetch('/api/backlog-history?'+new URLSearchParams({gdv:scope,date:REPORT_META.date}));const d=await r.json();if(!r.ok)throw Error(d.errorCode);if(epoch!==backlogHistoryEpoch||scope!==historyScope()||!$('backlogHistoryBody'))return;backlogHistoryState=d;
- $('backlogHistoryBody').innerHTML=`<div class="backlog-history-charts"><div><h3>Tỷ lệ hồ sơ theo nhóm tuổi</h3>${backlogTrendChart(d.series,true)}</div><div><h3>Tổng số hồ sơ tồn theo ngày</h3>${backlogTrendChart(d.series,false)}</div></div><p class="note">${esc(d.method)}</p>`;
- }catch(e){if(epoch===backlogHistoryEpoch&&$('backlogHistoryBody'))$('backlogHistoryBody').innerHTML=historyError(e);}
+ if(!$('backlogHistoryBody')&&!$('healthHistoryBody'))return;const epoch=++backlogHistoryEpoch,scope=historyScope();
+ try{const r=await authFetch('/api/backlog-history?'+new URLSearchParams({gdv:scope,date:REPORT_META.date}));const d=await r.json();if(!r.ok)throw Error(d.errorCode);if(epoch!==backlogHistoryEpoch||scope!==historyScope()||(!$('backlogHistoryBody')&&!$('healthHistoryBody')))return;backlogHistoryState=d;
+ if($('backlogHistoryBody'))$('backlogHistoryBody').innerHTML=`<div class="backlog-history-charts"><div><h3>Tỷ lệ hồ sơ theo nhóm tuổi</h3>${backlogTrendChart(d.series,true)}</div><div><h3>Tổng số hồ sơ tồn theo ngày</h3>${backlogTrendChart(d.series,false)}</div></div><p class="note">${esc(d.method)}</p>`;
+ drawHealthHistory();
+ }catch(e){if(epoch===backlogHistoryEpoch){for(const id of ['backlogHistoryBody','healthHistoryBody'])if($(id))$(id).innerHTML=historyError(e);}}
 }
 function backlogTrendChart(series,percent){
  if(!series.length)return '<p class="history-empty">Chưa có kỳ báo cáo được lưu.</p>';
@@ -47,4 +48,28 @@ function backlogHistoryPoint(date){
  const s=backlogHistoryState?.series.find(s=>s.date===date);if(!s)return;
  if(date===REPORT_META.date){historyOpen({scope:historyScope(),date,key:'backlog',mode:'current'});return;}
  $('detailBody').innerHTML=`<h2>Hồ sơ tồn ngày ${historyDay(date)}</h2><p>Tổng: <b>${num(s.total)}</b> hồ sơ.</p><ul>${['Dưới 45 ngày','45–90 ngày','Trên 90 ngày'].map((label,j)=>`<li>${label}: ${num(s.counts[j])} hồ sơ · ${s.rates[j]===null?'—':num(s.rates[j])+'%'}</li>`).join('')}</ul><p>Thiếu tuổi tồn: ${num(s.unknown)} hồ sơ. Kỳ cũ hiển thị số liệu tổng hợp.</p>`;if(!$('detail').open)$('detail').showModal();
+}
+
+function healthPanel(){return '<section class="health-panel" aria-labelledby="healthTitle"><div class="health-heading"><h2 id="healthTitle">CHỈ SỐ SỨC KHỎE HỒ SƠ</h2><label>Tháng theo dõi<select id="healthMonth" aria-label="Tháng chỉ số sức khỏe" onchange="healthMonth=this.value;drawHealthHistory()"></select></label></div><div id="healthHistoryBody" aria-live="polite">Đang đọc số liệu sức khỏe…</div><p class="note">Mỗi tháng bắt đầu ở 50, so với tồn ngày cuối tháng trước. Điểm = 50 + biến động dưới 45 ngày × 1 + biến động 45–90 ngày × 3 + biến động trên 90 ngày × 5. Tồn tăng làm điểm tăng, tồn giảm làm điểm giảm. Điểm càng thấp càng tốt.</p></section>';}
+function drawHealthHistory(){
+ const host=$('healthHistoryBody'),select=$('healthMonth'),months=backlogHistoryState?.health||[];if(!host||!select)return;
+ if(!months.length){host.innerHTML='<p class="history-empty">Chưa có số liệu báo cáo để tính sức khỏe.</p>';return;}
+ if(!months.some(m=>m.month===healthMonth))healthMonth=months.at(-1).month;
+ select.innerHTML=months.map(m=>`<option value="${m.month}"${m.month===healthMonth?' selected':''}>${m.month.slice(5)}/${m.month.slice(0,4)}</option>`).join('');
+ const month=months.find(m=>m.month===healthMonth),label=historyScope()?PTIGdv.gdvLabel(historyScope()):'Toàn đơn vị';
+ if(month.status!=='ready'){host.innerHTML=`<p class="health-scope">${esc(label)}</p><div class="history-empty">${month.status==='missing_baseline'?'Chưa có báo cáo ngày '+historyDay(month.baselineDate)+' để làm mốc cuối tháng trước.':'Mốc ngày '+historyDay(month.baselineDate)+' có hồ sơ thiếu tuổi tồn.'} Chưa tính điểm sức khỏe tháng này; không dùng ngày khác thay cho mốc còn thiếu.</div>`;return;}
+ const latest=month.points.at(-1),missing=month.points.filter(p=>p.score===null).length;
+ host.innerHTML=`<div class="health-scope">${esc(label)} · Mốc ${historyDay(month.baselineDate)} · ${latest?.score==null?'Ngày báo cáo mới nhất chưa đủ dữ liệu':`Điểm ngày ${historyDay(latest.date)}: <b style="color:${healthColor(latest.score)}">${num(latest.score)}/100</b>`}</div>${healthTrendChart(month)}${missing?`<p class="note">${missing} kỳ có hồ sơ thiếu tuổi tồn: để trống điểm, không suy đoán.</p>`:''}<p class="note">Vùng hiển thị 0–100; điểm gốc được giữ khi vượt giới hạn và ghi trong thông tin điểm. Chỉ vẽ các ngày có báo cáo; ngắt đường khi thiếu ngày.</p>`;
+}
+function healthColor(score){
+ const stops=[[31,157,112],[235,181,38],[217,65,81]],t=Math.max(0,Math.min(100,score))/50,a=t<=1?stops[0]:stops[1],b=t<=1?stops[1]:stops[2],f=t<=1?t:t-1;
+ return 'rgb('+a.map((v,i)=>Math.round(v+(b[i]-v)*f)).join(',')+')';
+}
+function healthTrendChart(month){
+ const points=month.points,day=d=>Date.parse(d+'T00:00:00Z')/86400000,first=day(points[0].date),span=day(points.at(-1).date)-first,w=Math.max(560,(span+1)*54),left=48,right=w-24,top=22,bottom=224;
+ const x=d=>span?left+(day(d)-first)/span*(right-left):(left+right)/2,y=score=>bottom-score/100*(bottom-top),segments=[];let segment=[];
+ for(const p of points){if(p.score===null){if(segment.length)segments.push(segment);segment=[];continue;}if(segment.length&&day(p.date)-day(segment.at(-1).date)>1){segments.push(segment);segment=[];}segment.push(p);}if(segment.length)segments.push(segment);
+ const paths=segments.map(group=>{const line=group.map((p,i)=>(i?'L':'M')+x(p.date)+','+y(p.score)).join(' '),area=line+' L'+x(group.at(-1).date)+','+bottom+' L'+x(group[0].date)+','+bottom+' Z';return `<path class="health-area" d="${area}" fill="url(#healthGradient)" opacity=".24"/><path d="${line}" fill="none" stroke="url(#healthGradient)" stroke-width="3"/>`;}).join('');
+ const dots=points.filter(p=>p.score!==null).map(p=>{const detail=`${historyDay(p.date)}: ${p.score}/100 · Điểm gốc ${p.rawScore}${p.clipped?' (vượt thang hiển thị)':''} · Biến động ba nhóm: ${p.changes.map(n=>(n>0?'+':'')+n).join(' / ')} · Mốc ${historyDay(month.baselineDate)}`;return `<circle cx="${x(p.date)}" cy="${y(p.score)}" r="5" fill="${healthColor(p.score)}" tabindex="0" aria-label="${esc(detail)}"><title>${esc(detail)}</title></circle>`;}).join('');
+ return `<div class="history-svg"><svg viewBox="0 0 ${w} 280" style="min-width:${w}px" role="img" aria-label="Chỉ số sức khỏe tháng ${month.month}, 0 tốt, 50 trung tính, 100 cần ưu tiên"><defs><linearGradient id="healthGradient" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="${bottom}" y2="${top}"><stop offset="0" stop-color="${healthColor(0)}"/><stop offset=".5" stop-color="${healthColor(50)}"/><stop offset="1" stop-color="${healthColor(100)}"/></linearGradient></defs>${[0,25,50,75,100].map(n=>`<line x1="${left}" x2="${right}" y1="${y(n)}" y2="${y(n)}" stroke="${n===50?'#b68a24':'#dfe7ec'}"${n===50?' stroke-dasharray="6 4" stroke-width="1.5"':''}/><text x="${left-8}" y="${y(n)+4}" text-anchor="end">${n}</text>`).join('')}${paths}${dots}${points.map(p=>`<text x="${x(p.date)}" y="250" text-anchor="middle">${p.date.slice(8)}/${p.date.slice(5,7)}</text>`).join('')}</svg></div><div class="health-scale"><span style="color:${healthColor(0)}">0 · Tốt</span><span style="color:${healthColor(50)}">50 · Trung tính</span><span style="color:${healthColor(100)}">100 · Cần ưu tiên</span></div>`;
 }
