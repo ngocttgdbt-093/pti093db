@@ -307,6 +307,13 @@ function updatePrintScope() {
  host.textContent='Phạm vi: '+[ $('gdv')?.value||'Tất cả GĐV', $('nv')?.value==='other'?'Nghiệp vụ khác':$('nv')?.value||'Tất cả nghiệp vụ', $('q')?.value?'Tìm kiếm: '+$('q').value:''].filter(Boolean).join(' · ');
 }
 if(typeof window!=='undefined')window.addEventListener('beforeprint',updatePrintScope);
+function renderWithSearchFocus(event) {
+    if(event?.isComposing)return;
+    const input=$('q'),focused=document.activeElement===input;
+    const selection=focused?[input.selectionStart,input.selectionEnd,input.selectionDirection]:null;
+    render();
+    if(focused&&input.isConnected){input.focus({preventScroll:true});if(selection&&selection[0]!==null)input.setSelectionRange(...selection);}
+}
 function render() {
     if (typeof chartTipHide === 'function')
         chartTipHide();
@@ -320,7 +327,7 @@ function render() {
         html = (page === 'Giám định viên' ? gdvBacklogTable(rs) + gdvCharts(rs) + gdvDetailCharts(rs) + gdvMonthlyTable(filtered(DATA.f), DATA.g) : '') + '<div class="panel gdv-summary"><div class="tablehead"><h2>' + page + '</h2><button onclick="exportCsv()">Xuất CSV</button></div><p class="note">' + (page === 'Giám định viên' ? 'Hiển thị mã GĐV từ dữ liệu gốc; chưa cấu hình danh mục họ tên.' : 'Nhóm bằng mã gara; hồ sơ thiếu mã được giữ trong nhóm riêng. Bấm nhóm để xem chi tiết.') + '</p>' + groupTable(rs, page === 'Giám định viên' ? r => r['GĐV thụ lý'] : r => r['Mã garage'] && r['Mã garage'] !== '-' ? r['Mã garage'] + ' · ' + garage(r) : 'Chưa có mã gara') + '</div>';
     }
     else if (page === 'Phân tích HS tồn') {
-        html = oldestReport(rs) + oldestReport(rs, 'mid') + '<div class="panel analysis-comparison"><div class="tablehead"><h2>So sánh theo tiêu chí</h2><select id="dim"><option>Hãng xe</option><option>Mã nghiệp vụ</option><option>Trạng thái hồ sơ</option></select><button onclick="exportComparison()">Xuất CSV</button></div><div id="groups"></div></div>';
+        html = backlogHistoryPanel() + oldestReport(rs) + oldestReport(rs, 'mid') + '<div class="panel analysis-comparison"><div class="tablehead"><h2>So sánh theo tiêu chí</h2><select id="dim"><option>Hãng xe</option><option>Mã nghiệp vụ</option><option>Trạng thái hồ sơ</option></select><button onclick="exportComparison()">Xuất CSV</button></div><div id="groups"></div></div>';
     }
     else if (page === 'Phân tích CP & BT') {
         html = xoLossPanel() + smallCostPanel();
@@ -339,7 +346,7 @@ function render() {
     if(page==='Giám định viên')html+=historyPanel()+smallCostPanel();
     // Rescue persistent controls before replacing content from the previous menu.
     const persistentFilters = document.querySelector('section.filters');
-    if (persistentFilters) $('printScope').before(persistentFilters);
+    if (persistentFilters && $('content').contains(persistentFilters)) $('printScope').before(persistentFilters);
     $('content').innerHTML = html;
     // Keep PDF-based loss ratios and XO.4 summary above the claim-record filters.
     // Move the existing filter DOM node only after replacing the content, so navigation cannot destroy it.
@@ -347,7 +354,7 @@ function render() {
     const printScopeNode = $('printScope');
     if (recordFilters && printScopeNode) {
         if (page === 'Phân tích CP & BT') document.querySelector('.cost-panel').before(recordFilters);
-        else printScopeNode.parentElement.insertBefore(recordFilters, printScopeNode);
+        else if(recordFilters.nextElementSibling!==printScopeNode)printScopeNode.parentElement.insertBefore(recordFilters, printScopeNode);
     }
     if(page==='Tổng quan'||page==='Cải tiến CLDV')loadAiAnalysis();
     if(['Tổng quan','Giám định viên','Cải tiến CLDV','Phân tích CP & BT'].includes(page))loadHistoryPanels();
@@ -358,6 +365,7 @@ function render() {
     if (page === 'Tra cứu hồ sơ')
         bindLookup();
     if (page === 'Phân tích HS tồn') {
+        loadBacklogHistory();
         let draw = () => { $('groups').innerHTML = groupTable(rs, r => $('dim').value === 'Trạng thái hồ sơ' ? reportStatus(r) : r[$('dim').value] || 'Chưa có'); };
         $('dim').onchange = draw;
         draw();
@@ -371,4 +379,4 @@ function setMenuStyle(style) { if (!['classic', 'light', 'ocean'].includes(style
 }
 catch { } }
 setMenuStyle('ocean');
-loadCurrentDataset().then(d => { setDataset(d); $('nav').innerHTML = pages.map(p => `<button onclick="go('${p}')">${p}</button>`).join(''); $('gdv').innerHTML = '<option value="">Tất cả GĐV</option>' + [...new Set(ROWS.map(r => r['GĐV thụ lý']))].sort().map(v => `<option>${esc(v)}</option>`).join(''); ['gdv', 'nv'].forEach(k => $(k).onchange = render); $('q').oninput = render; go(page); initRobo(); loadPtiSyncStatus(); startDatasetSyncWatch(); document.body.removeAttribute('data-auth-pending'); }).catch(e => { $('content').textContent = 'Không thể mở bộ dữ liệu: ' + e.message; if(sessionStorage.getItem('pti093_auth'))document.body.removeAttribute('data-auth-pending'); });
+loadCurrentDataset().then(d => { setDataset(d); $('nav').innerHTML = pages.map(p => `<button onclick="go('${p}')">${p}</button>`).join(''); $('gdv').innerHTML = '<option value="">Tất cả GĐV</option>' + [...new Set(ROWS.map(r => r['GĐV thụ lý']))].sort().map(v => `<option>${esc(v)}</option>`).join(''); ['gdv', 'nv'].forEach(k => $(k).onchange = render); $('q').addEventListener('input',renderWithSearchFocus);$('q').addEventListener('compositionend',renderWithSearchFocus); go(page); initRobo(); loadPtiSyncStatus(); startDatasetSyncWatch(); document.body.removeAttribute('data-auth-pending'); }).catch(e => { $('content').textContent = 'Không thể mở bộ dữ liệu: ' + e.message; if(sessionStorage.getItem('pti093_auth'))document.body.removeAttribute('data-auth-pending'); });
