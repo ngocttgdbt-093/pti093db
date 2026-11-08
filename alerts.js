@@ -20,7 +20,7 @@ function alertModel(data,cutoffDate,gdv='') {
  for(const row of data.t) {const key=PTIClaimLogic.claimId(row);if(!index.resolved.has(key)&&!pool.has(key))pool.set(key,{...row});}
  const definitions=[
   {key:'over90',label:'Hồ sơ tồn trên 90 ngày',color:'red',test:(r,age)=>age!==null&&age>90},
-  {key:'over45',label:'Hồ sơ tồn trên 45 đến 90 ngày',color:'orange',test:(r,age)=>age!==null&&age>45&&age<=90},
+  {key:'over45',label:'Hồ sơ tồn từ 45 đến 90 ngày',color:'orange',test:(r,age)=>age!==null&&age>=45&&age<=90},
   {key:'tnds',label:'TNDS chưa giải quyết',color:'orange',test:r=>PTIClaimLogic.claimResult(r,index).status==='TNDS chưa giải quyết'},
   {key:'assessment',label:'Giám định chi tiết',color:'orange',state:'Giám định chi tiết'},
   {key:'guarantee',label:'Đã bảo lãnh từ 7 ngày',color:'orange',state:'Đã bảo lãnh',dateField:'Ngày bảo lãnh'},
