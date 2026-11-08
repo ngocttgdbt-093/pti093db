@@ -20,7 +20,7 @@ function alertModel(data,cutoffDate,gdv='') {
  for(const row of data.t) {const key=PTIClaimLogic.claimId(row);if(!index.resolved.has(key)&&!pool.has(key))pool.set(key,{...row});}
  const definitions=[
   {key:'over90',label:'Hồ sơ tồn trên 90 ngày',color:'red',test:(r,age)=>age!==null&&age>90},
-  {key:'over45',label:'Hồ sơ tồn trên 45 đến 90 ngày',color:'orange',test:(r,age)=>age!==null&&age>45&&age<=90},
+  {key:'over45',label:'Hồ sơ tồn từ 45 đến 90 ngày',color:'orange',test:(r,age)=>age!==null&&age>=45&&age<=90},
   {key:'tnds',label:'TNDS chưa giải quyết',color:'orange',test:r=>PTIClaimLogic.claimResult(r,index).status==='TNDS chưa giải quyết'},
   {key:'assessment',label:'Giám định chi tiết',color:'orange',state:'Giám định chi tiết'},
   {key:'guarantee',label:'Đã bảo lãnh từ 7 ngày',color:'orange',state:'Đã bảo lãnh',dateField:'Ngày bảo lãnh'},
@@ -86,3 +86,4 @@ function drawAlertRecords(key) {
  $('alertRecordsBody').innerHTML=`<table><thead><tr>${['STT','Số HSBT / Biển số','GĐV','Trạng thái','Số ngày tồn',...(dateColumn?[dateColumn,'Số ngày chờ bước này']:[]),...(key==='missing'?['Cần đối soát']:[]),'Giá trị BT báo cáo'].map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${group.items.map((x,i)=>`<tr tabindex="0" role="button" aria-label="Mở chi tiết hồ sơ ${esc(id(x.row))}" onclick="showRecord(${esc(JSON.stringify(id(x.row)))})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"><td>${i+1}</td><td><b>${esc(x.row['Biển số xe'])}</b><small>${esc(id(x.row))}</small></td><td>${esc(x.row['GĐV thụ lý'])}</td><td>${esc(reportStatus(x.row))}</td><td><b>${x.age===null?'Thiếu ngày':num(x.age)}</b></td>${dateColumn?`<td>${esc(x.row[dateColumn])}</td><td>${num(x.waiting)} ngày</td>`:''}${key==='missing'?`<td>${esc(x.reason)}</td>`:''}<td>${money(reportAmount(x.row))}</td></tr>`).join('')||'<tr><td colspan="9" class="alert-empty">Không còn hồ sơ phù hợp.</td></tr>'}</tbody></table>`;
  $('alertRecordsBody').scrollTop=0;
 }
+
