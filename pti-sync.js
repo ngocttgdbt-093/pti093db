@@ -1,6 +1,6 @@
 let ptiSyncStatus=null,ptiSyncConfigBusy=false,ptiManualBusy=false;
 const ptiSyncTime=v=>v?new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',dateStyle:'short',timeStyle:'short'}).format(new Date(v)):'Chưa có';
-function ptiSyncPanel(){return `<section class="panel pti-sync-panel"><div class="pti-sync-heading"><div><h2>Kết nối hệ thống báo cáo PTI</h2><p>Lưu tài khoản PTI để chuẩn bị lấy ba nguồn báo cáo của phòng 093.</p></div><button class="import-primary" onclick="openPtiSyncConfig()">Cấu hình tài khoản PTI</button></div><div class="pti-manual-update"><button type="button" class="import-primary" id="ptiManualUpdate" onclick="requestPtiManualUpdate()" ${ptiManualBusy?'disabled':''}>Cập nhật từ PTI</button><p class="note">Xác nhận bằng mật khẩu cập nhật dữ liệu như Local/Drive. Chức năng lấy báo cáo từ nút này đang chờ kết nối máy chủ.</p><p id="ptiManualFeedback" role="status" aria-live="polite"></p></div><div id="ptiSyncStatus" aria-live="polite">Đang đọc trạng thái…</div><p class="note">Lịch yêu cầu: 06:00 hằng ngày; thử lại lúc 12:30 cùng ngày nếu lần sáng lỗi. Giờ Việt Nam. Chỉ cập nhật khi lấy và đối soát đủ ba báo cáo. Khi lỗi, hệ thống tiếp tục dùng dữ liệu hiện tại.</p></section>`}
+function ptiSyncPanel(){return `<section class="panel pti-sync-panel"><div class="pti-sync-heading"><div><h2>Kết nối hệ thống báo cáo PTI</h2><p>Lưu tài khoản PTI để chuẩn bị lấy ba nguồn báo cáo của phòng 093.</p></div><button class="import-primary" onclick="openPtiSyncConfig()">Cấu hình tài khoản PTI</button></div><div class="pti-manual-update"><button type="button" class="import-primary" id="ptiManualUpdate" onclick="requestPtiManualUpdate()" ${ptiManualBusy?'disabled':''}>Cập nhật từ PTI</button><p class="note">Xác nhận bằng mật khẩu cập nhật dữ liệu như Local/Drive. Hệ thống tự lấy ba báo cáo PTI, đối soát và cập nhật. Giữ trang mở đến khi hoàn tất.</p><p id="ptiManualFeedback" role="status" aria-live="polite"></p></div><div id="ptiSyncStatus" aria-live="polite">Đang đọc trạng thái…</div><p class="note">Lịch yêu cầu: 06:00 hằng ngày; thử lại lúc 12:30 cùng ngày nếu lần sáng lỗi. Giờ Việt Nam. Chỉ cập nhật khi lấy và đối soát đủ ba báo cáo. Khi lỗi, hệ thống tiếp tục dùng dữ liệu hiện tại.</p></section>`}
 function drawPtiSyncStatus(){
  const s=ptiSyncStatus;if(!s)return;
  const host=$('ptiSyncStatus'),banner=$('ptiSyncBanner'),run=s.lastSync,enabled=s.schedule?.enabled;
@@ -34,21 +34,31 @@ function showPtiCredentialForm(token){return new Promise(resolve=>{
 async function requestPtiManualUpdate(){
  if(ptiManualBusy || (typeof importBusy!=='undefined' && importBusy))return;
  ptiManualBusy=true;
- const button=document.getElementById('ptiManualUpdate');
- const feedback=document.getElementById('ptiManualFeedback');
- if(button)button.disabled=true;
- if(feedback)feedback.textContent='';
- let databaseToken=null;
+ const feedback=text=>{const node=document.getElementById('ptiManualFeedback');if(node)node.textContent=text;};
+ const button=document.getElementById('ptiManualUpdate');if(button)button.disabled=true;
+ let databaseToken=null,runToken=null;
  try{
-  databaseToken=await requestDatabasePassword();
-  if(!databaseToken)return;
-  if(feedback)feedback.textContent='Đã xác nhận quyền cập nhật. Kết nối cập nhật PTI từ nút này chưa được kích hoạt trên máy chủ. Chưa bắt đầu tải báo cáo hoặc thay đổi dữ liệu.';
- }catch(error){
-  if(feedback)feedback.textContent='Không thể xác nhận cập nhật: '+(error.message||'Vui lòng thử lại.');
- }finally{
-  databaseToken=null;
-  ptiManualBusy=false;
-  const currentButton=document.getElementById('ptiManualUpdate');
-  if(currentButton)currentButton.disabled=false;
+  databaseToken=await requestDatabasePassword();if(!databaseToken)return;
+  if(typeof importBusy!=='undefined')importBusy=true;
+  feedback('Đang bắt đầu cập nhật từ PTI…');
+  const post=async(path,options)=>{const response=await authFetch(path,{method:'POST',...options});let body;try{body=await response.json()}catch{throw Error('Máy chủ chưa phản hồi hợp lệ. Hãy kiểm tra trạng thái cập nhật.');}if(!response.ok)throw Error(body.error||'Chưa thực hiện được cập nhật PTI.');return body;};
+  let run=await post('/api/pti-sync/manual',{headers:{'X-Database-Authorization':databaseToken}});
+  databaseToken=null;runToken=run.runToken;
+  if(!run.id||!runToken)throw Error('Chưa nhận được phiên cập nhật PTI.');
+  const runId=run.id;
+  while(!run.finished){
+   feedback('Đang lấy và đối soát ba báo cáo PTI · Bước '+Math.min((run.step||0)+1,4)+'/4. Vui lòng giữ trang mở.');
+   run=await post('/api/pti-sync/manual-step',{headers:{'Content-Type':'application/json'},body:JSON.stringify({runId,runToken})});
+   if(run.busy)await new Promise(resolve=>setTimeout(resolve,2000));
+  }
+  if(run.status!=='succeeded')throw Error(run.message||'Cập nhật chưa hoàn tất.');
+  feedback(run.message);
+  await loadPtiSyncStatus();
+  if(!run.result?.unchanged)location.reload();
+ }catch(error){feedback((error.message||'Cập nhật bị gián đoạn.')+' Hãy kiểm tra trạng thái trước khi thử lại.');await loadPtiSyncStatus();}
+ finally{
+  databaseToken=null;runToken=null;ptiManualBusy=false;
+  if(typeof importBusy!=='undefined')importBusy=false;
+  const currentButton=document.getElementById('ptiManualUpdate');if(currentButton)currentButton.disabled=false;
  }
 }
