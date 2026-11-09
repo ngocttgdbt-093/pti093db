@@ -66,6 +66,11 @@ function dashboardMotionSweep(){
   dashboardTrackAnimation(path,[{strokeDashoffset:String(length)},{strokeDashoffset:'0'}],{duration:1100},()=>{path.style.strokeDasharray=oldArray;path.style.strokeDashoffset=oldOffset;});
  }
  for(const svg of host.querySelectorAll('.depth-ring svg')){if(dashboardMotionSeen.has(svg))continue;dashboardMotionSeen.add(svg);dashboardMotionRing(svg);}
+ for(const line of host.querySelectorAll('.health-line')){
+  if(dashboardMotionSeen.has(line))continue;
+  dashboardMotionSeen.add(line);
+  dashboardTrackAnimation(line,[{strokeDasharray:'0 1'},{strokeDasharray:'1 0'}],{duration:780});
+ }
  for(const area of host.querySelectorAll('.health-area')){if(dashboardMotionSeen.has(area))continue;dashboardMotionSeen.add(area);dashboardTrackAnimation(area,[{opacity:0},{opacity:.24}],{duration:1100});}
 }
 function dashboardMotionRender(){
