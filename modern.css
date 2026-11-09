@@ -37,6 +37,24 @@ body[data-dashboard-motion="off"] *,body[data-dashboard-motion="off"] *::before,
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.card:hover{transform:none!important}}
 @media print{*,*::before,*::after{animation:none!important;transition:none!important}.card,.panel,.health-panel,.backlog-history-panel{box-shadow:none!important;backdrop-filter:none!important}.card:hover{transform:none!important}}
 
-.mail-table{overflow-x:auto}.mail-table input:not([type=checkbox]){min-width:145px;width:100%}.mail-table table{min-width:760px}.mail-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:18px 0}.mail-preview{width:min(95vw,850px);height:90vh}.mail-preview iframe{width:100%;height:calc(100% - 50px);border:0}#mailLogin form{display:grid;gap:14px}#mailLogin input{display:block;width:100%}@media print{#mailAdmin,#mailLogin,.mail-preview{display:none!important}}
+.mail-table{overflow-x:auto}.mail-table input:not([type=checkbox]){min-width:145px;width:100%}.mail-table table{min-width:760px}.mail-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:18px 0}.mail-preview{width:min(95vw,850px);height:90vh}.mail-preview iframe{width:100%;height:calc(100% - 50px);border:0}@media print{#mailAdmin,.mail-preview{display:none!important}}
 
 .mail-batch{margin:12px 0;padding:12px 16px;border:1px solid #cde2ec;border-radius:12px;background:#eef7fa;color:#214e66}.mail-batch ul{margin:6px 0 0;padding-left:20px}
+
+#mailAdmin{width:100%;max-width:1120px;margin-inline:auto}
+.mail-admin-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 18px;padding-bottom:12px;border-bottom:1px solid #dce8ef}
+#mailAdmin .mail-admin-heading h2{margin:0 0 4px;text-align:left;font-size:17px}
+.mail-admin-heading p,.mail-sender{margin:0;font-size:12px;color:#47677c}
+.mail-sender{margin-top:12px}
+#mailAdmin .mail-controls{gap:8px;margin:12px 0;align-items:center}
+#mailAdmin .mail-schedule{padding:10px 12px;border-radius:12px;background:#eef6fa}
+#mailAdmin .mail-controls label{display:inline-flex;align-items:center;gap:8px;margin:0}
+#mailAdmin button,#mailAdmin select,#mailAdmin input:not([type=checkbox]){min-height:34px;padding:6px 9px;font-size:12px;border-radius:8px}
+#mailAdmin .mail-primary{background:#245e78;color:#fff;border-color:#245e78}
+#mailAdmin .mail-table{border:1px solid #dce8ef;border-radius:10px}
+#mailAdmin table{min-width:630px}
+#mailAdmin th,#mailAdmin td{padding:6px 8px}
+#mailAdmin td input:not([type=checkbox]){min-width:0}
+#mailAdmin td:first-child{width:15%}
+#mailAdmin input[type=checkbox]{appearance:auto;inline-size:16px;block-size:16px;min-width:0;min-height:0;padding:0;margin:0;vertical-align:middle;accent-color:#246d87}
+#mailAdmin .mail-save{justify-content:flex-end}

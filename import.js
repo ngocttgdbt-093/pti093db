@@ -11,9 +11,15 @@ function selectReportFiles(files){
  if(button)button.disabled=importBusy||!importSelectedFiles.length;
 }
 function requestDatabasePassword(){
+ return requestDashboardPassword({
+  title:'Nhập mật khẩu quản trị database', subtitle:'Xác nhận quyền cập nhật dữ liệu báo cáo',
+  action:'Xác nhận cập nhật', endpoint:'/api/database-auth', tokenKey:'databaseToken'
+ });
+}
+function requestDashboardPassword({title,subtitle,action,endpoint,tokenKey}){
  return new Promise(resolve=>{
   const dialog=document.createElement('dialog');dialog.className='db-admin-dialog';dialog.setAttribute('aria-labelledby','databaseAuthTitle');
-  dialog.innerHTML=`<form class="db-admin-card"><header><div class="db-admin-logo"><svg viewBox="12 4 62 60" role="img" aria-label="PTI SOS"><defs><filter id="database-logo-cutout" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  3 3 0 0 -1"/></filter></defs><image href="pti-sos.png" x="0" y="0" width="87" height="68" filter="url(#database-logo-cutout)"/></svg></div><p class="db-admin-brand">PTI093 · HẢI PHÒNG</p><h2 id="databaseAuthTitle">Nhập mật khẩu quản trị database</h2><p>Xác nhận quyền cập nhật dữ liệu báo cáo</p></header><label for="databasePassword">Mật khẩu quản trị</label><div class="db-admin-field"><input id="databasePassword" type="password" autocomplete="off" placeholder="Nhập mật khẩu" required maxlength="200"><button type="button" class="db-admin-show" aria-label="Hiện mật khẩu" aria-pressed="false">◉</button></div><p class="db-admin-feedback" role="alert" aria-live="polite"></p><button type="submit" class="db-admin-submit">Xác nhận cập nhật</button><button type="button" class="db-admin-cancel">Hủy</button><footer>© 2026 PTI093 — Nội bộ</footer></form>`;
+  dialog.innerHTML=`<form class="db-admin-card"><header><div class="db-admin-logo"><svg viewBox="12 4 62 60" role="img" aria-label="PTI SOS"><defs><filter id="database-logo-cutout" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  3 3 0 0 -1"/></filter></defs><image href="pti-sos.png" x="0" y="0" width="87" height="68" filter="url(#database-logo-cutout)"/></svg></div><p class="db-admin-brand">PTI093 · HẢI PHÒNG</p><h2 id="databaseAuthTitle">${esc(title)}</h2><p>${esc(subtitle)}</p></header><label for="databasePassword">Mật khẩu quản trị</label><div class="db-admin-field"><input id="databasePassword" type="password" autocomplete="off" placeholder="Nhập mật khẩu" required maxlength="200"><button type="button" class="db-admin-show" aria-label="Hiện mật khẩu" aria-pressed="false">◉</button></div><p class="db-admin-feedback" role="alert" aria-live="polite"></p><button type="submit" class="db-admin-submit">${esc(action)}</button><button type="button" class="db-admin-cancel">Hủy</button><footer>© 2026 PTI093 — Nội bộ</footer></form>`;
   document.body.append(dialog);let verified=null,busy=false;
   const form=dialog.querySelector('form'),input=dialog.querySelector('input'),submit=dialog.querySelector('[type="submit"]'),feedback=dialog.querySelector('[role="alert"]');
   dialog.addEventListener('close',()=>{input.value='';dialog.remove();resolve(verified)},{once:true});
@@ -21,9 +27,9 @@ function requestDatabasePassword(){
   dialog.addEventListener('click',e=>{const r=dialog.getBoundingClientRect();if(e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))dialog.close()});
   dialog.querySelector('.db-admin-show').onclick=function(){const show=input.type==='password';input.type=show?'text':'password';this.setAttribute('aria-label',show?'Ẩn mật khẩu':'Hiện mật khẩu');this.setAttribute('aria-pressed',String(show))};
   form.onsubmit=async e=>{e.preventDefault();if(busy)return;busy=true;submit.disabled=true;submit.textContent='Đang xác thực…';feedback.textContent='';
-   try{const response=await authFetch('/api/database-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:input.value})});input.value='';const result=await response.json();if(!response.ok)throw Error(result.error||'Không xác thực được quyền cập nhật.');if(!result.databaseToken)throw Error('Chưa nhận được quyền cập nhật.');if(!dialog.open)return;verified=result.databaseToken;dialog.close()}
+   try{const response=await authFetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:input.value})});input.value='';const result=await response.json();if(!response.ok)throw Error(result.error||'Không xác thực được quyền quản trị.');if(!result[tokenKey])throw Error('Chưa nhận được quyền quản trị.');if(!dialog.open)return;verified=result[tokenKey];dialog.close()}
    catch(error){if(dialog.open){feedback.textContent=error.message;input.focus()}}
-   finally{busy=false;submit.disabled=false;submit.textContent='Xác nhận cập nhật'}
+   finally{busy=false;submit.disabled=false;submit.textContent=action}
   };
   dialog.showModal();input.focus();
  });
