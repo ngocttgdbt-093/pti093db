@@ -9,10 +9,10 @@
 
 .health-panel{background:linear-gradient(145deg,#fff 35%,#eef7fa)}.health-baseline{stroke:#fff;stroke-width:2;paint-order:fill stroke}.health-point{cursor:help}
 
-.health-heading{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+.health-heading{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center}
 .health-heading h2{grid-column:2;text-align:center}
 .health-heading label{grid-column:3;justify-self:end}
-@media(max-width:860px){
+@media(max-width:1160px){
  .health-heading{grid-template-columns:1fr;justify-items:center}
  .health-heading h2,.health-heading label{grid-column:1;justify-self:center}
 }
