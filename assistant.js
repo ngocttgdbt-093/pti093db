@@ -157,5 +157,98 @@ function roboFitViewport(){
  p.dataset.keyboard=String(r.keyboard);
 }
 function roboToggle(force){const p=$('roboPanel');p.hidden=typeof force==='boolean'?!force:!p.hidden;$('roboFab').setAttribute('aria-expanded',String(!p.hidden));if(!p.hidden){if(!roboLog.length)roboHome();roboFitViewport();if(!roboTouchViewport())$('roboInput').focus({preventScroll:true});roboAlignNewest()}else if(p.contains(document.activeElement)){document.activeElement.blur()}}
-function initRobo(){const robot='<span class="robo-head"><i></i><i></i><em></em></span>';document.body.insertAdjacentHTML('beforeend',`<button id="roboFab" class="robo-fab" aria-label="Mở trợ lý GĐV 093, kéo để đổi vị trí" aria-expanded="false" title="Bấm để mở · Kéo để đổi vị trí">${robot}</button><section id="roboPanel" data-robo-build="20261105-short-claim" class="robo-panel" role="dialog" aria-label="Trợ lý GĐV 093" hidden><div class="robo-top"><div>${robot}<b>Trợ lý GĐV 093<small>AI · Hướng dẫn & số liệu 093</small></b></div><button id="roboReset" title="Xóa hội thoại">↺</button><button id="roboClose" aria-label="Đóng trợ lý">✕</button></div><div class="robo-toolbar"><button id="roboHome">Chủ đề</button><label>Phạm vi GĐV <select id="roboGdv"><option value="">Tất cả GĐV</option>${[...new Set(ROWS.map(r=>r['GĐV thụ lý']))].sort().map(k=>`<option value="${esc(k)}">${esc(PTIGdv.gdvLabel(k))}</option>`).join('')}</select></label></div><div id="roboLog" class="robo-log" aria-live="polite"></div><form id="roboForm"><input id="roboInput" maxlength="1000" placeholder="Hỏi quy trình, biển số / số HSBT…" aria-label="Câu hỏi"><button type="button" id="roboMic" aria-label="Nhập bằng giọng nói">🎙</button><button type="submit" aria-label="Gửi câu hỏi">➤</button></form><small id="roboVoiceNote">AI nhận câu hỏi qua Cloudflare · Không nhập thông tin cá nhân khách hàng.</small></section>`);roboMy=roboRead('093_robo_my')||'';$('roboGdv').value=roboMy;$('roboGdv').onchange=e=>{roboMy=e.target.value;roboWrite('093_robo_my',roboMy)};roboLog=[];const saved=roboRead('093_robo_log_v1');if(Array.isArray(saved))roboLog=saved.filter(x=>x&&x.role==='user'&&typeof x.text==='string').slice(-20).flatMap(x=>{let html;try{html=roboAnswer(x.text)}catch{html='<p>Hãy hỏi lại để tra cứu dữ liệu hiện tại.</p>'}return [{role:'user',text:x.text},{role:'bot',html}]});roboDraw(); // Only restore plain user text; rebuild bot answers from current code.
+function roboParseCatalog(html){
+  const match=html.match(/<script type="application\/json" id="inventory">([\s\S]*?)<\/script>/);
+  if(!match)throw new Error('Missing inventory');
+  const rows=JSON.parse(match[1]);
+  if(!Array.isArray(rows)||!rows.length||rows.length>10000)throw new Error('Invalid inventory');
+  return rows.map(row=>{
+    if(!row||typeof row.title!=='string'||typeof row.cat!=='string'||typeof row.url!=='string')throw new Error('Invalid entry');
+    const url=new URL(row.url);
+    if(url.protocol!=='https:'||url.username||url.password||url.port||
+      !((url.hostname==='drive.google.com'&&/^\/file\/d\/[\w-]+\/view\/?$/.test(url.pathname))||
+      (url.hostname==='docs.google.com'&&/^\/(document|spreadsheets|presentation)\/d\/[\w-]+\/edit\/?$/.test(url.pathname))))throw new Error('Invalid Drive URL');
+    url.searchParams.delete('usp');
+    const folder=typeof row.folder==='string'?row.folder:'';
+    const text=typeof row.text==='string'?row.text:'';
+    return {title:row.title,cat:row.cat,folder,text,url:url.href,download:row.download===true,old:row.old===true};
+  });
+}
+function roboCatalogNorm(value){
+  return value.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/đ/g,'d').replace(/[^a-z0-9]+/g,' ').trim();
+}
+function roboFindCatalog(rows,query,category){
+  const normalized=roboCatalogNorm(query);
+  const tokens=normalized.split(' ').filter(Boolean);
+  return rows.filter(row=>!category||row.cat===category).map(row=>{
+    const title=roboCatalogNorm(row.title);
+    const metadata=roboCatalogNorm(row.title+' '+row.cat+' '+row.folder);
+    const text=roboCatalogNorm(row.text);
+    const score=normalized&&title.includes(normalized)?3:tokens.every(token=>title.includes(token))?2:
+      tokens.every(token=>metadata.includes(token))?1:tokens.every(token=>metadata.includes(token)||text.includes(token))?0:-1;
+    return {row,score};
+  }).filter(result=>result.score>=0).sort((a,b)=>b.score-a.score||Number(a.row.old)-Number(b.row.old)||
+    a.row.title.localeCompare(b.row.title,'vi',{numeric:true})).map(result=>result.row);
+}
+function initRoboCatalog(){
+  document.body.insertAdjacentHTML('beforeend',`<dialog id="roboCatalogDialog" aria-labelledby="roboCatalogTitle" style="width:min(42rem,92vw);max-height:80dvh;overflow:auto;border:1px solid #a9bfce;border-radius:12px;padding:16px;background:Canvas;color:CanvasText">
+    <form method="dialog"><button aria-label="Đóng kho tài liệu">Đóng ✕</button></form>
+    <h2 id="roboCatalogTitle">Kho tài liệu GĐV 093</h2>
+    <p>Mở tệp danh mục do quản trị viên cung cấp. Drive sẽ kiểm tra quyền khi bạn mở hoặc tải bản gốc.</p>
+    <p><label>Chọn tệp danh mục <input id="roboCatalogFile" type="file" accept=".html,text/html"></label></p>
+    <div id="roboCatalogFilters" hidden><p><label>Tìm theo tên, mã hoặc nội dung <input id="roboCatalogQuery" type="search" maxlength="180"></label></p>
+    <p><label>Nhóm <select id="roboCatalogGroup"><option value="">Tất cả nhóm</option></select></label></p></div>
+    <p id="roboCatalogStatus" role="status"></p><div id="roboCatalogResults"></div><button type="button" id="roboCatalogMore" hidden>Xem thêm</button>
+  </dialog>`);
+  const dialog=$('roboCatalogDialog'),file=$('roboCatalogFile'),query=$('roboCatalogQuery'),
+    group=$('roboCatalogGroup'),results=$('roboCatalogResults'),more=$('roboCatalogMore'),status=$('roboCatalogStatus');
+  let rows=[],limit=20,revision=0;
+  function add(parent,tag,value){
+    const element=document.createElement(tag);
+    element.textContent=value;
+    parent.append(element);
+    return element;
+  }
+  function render(){
+    const matches=roboFindCatalog(rows,query.value,group.value);
+    status.textContent=matches.length?`Hiện ${Math.min(limit,matches.length)} / ${matches.length} tài liệu`:'Không tìm thấy tài liệu phù hợp.';
+    results.replaceChildren();
+    for(const row of matches.slice(0,limit)){
+      const card=add(results,'article','');
+      add(card,'h3',row.title);
+      add(card,'p',row.cat+' · '+row.folder+(row.old?' · Bản cũ, dùng để đối chiếu':''));
+      if(row.text){
+        const detail=add(card,'details','');
+        add(detail,'summary','Xem đoạn trích');
+        add(detail,'p',row.text).style.whiteSpace='pre-wrap';
+      }
+      const link=add(card,'a',row.download?'Mở / tải trên Drive':'Mở trên Drive');
+      link.href=row.url;link.target='_blank';link.rel='noopener noreferrer';
+    }
+    more.hidden=matches.length<=limit;
+  }
+  query.oninput=group.onchange=()=>{limit=20;render()};
+  more.onclick=()=>{limit+=20;render()};
+  file.onchange=async()=>{
+    const selected=file.files[0],current=++revision;
+    if(!selected)return;
+    try{
+      if(selected.size>8*1024*1024)throw new Error('Catalog too large');
+      const next=roboParseCatalog(await selected.text());
+      if(current!==revision)return;
+      rows=next;limit=20;query.value='';
+      group.length=1;group.value='';
+      for(const category of [...new Set(rows.map(row=>row.cat))].sort((a,b)=>a.localeCompare(b,'vi'))){
+        group.add(new Option(category,category));
+      }
+      $('roboCatalogFilters').hidden=false;
+      render();
+    }catch{
+      if(current===revision){status.textContent='Tệp danh mục không hợp lệ. Hãy chọn tệp HTML do quản trị viên cung cấp.';file.value=''}
+    }
+  };
+  $('roboCatalog').onclick=()=>{if(!dialog.open)dialog.showModal()};
+}
+
+function initRobo(){const robot='<span class="robo-head"><i></i><i></i><em></em></span>';document.body.insertAdjacentHTML('beforeend',`<button id="roboFab" class="robo-fab" aria-label="Mở trợ lý GĐV 093, kéo để đổi vị trí" aria-expanded="false" title="Bấm để mở · Kéo để đổi vị trí">${robot}</button><section id="roboPanel" data-robo-build="20261105-short-claim" class="robo-panel" role="dialog" aria-label="Trợ lý GĐV 093" hidden><div class="robo-top"><div>${robot}<b>Trợ lý GĐV 093<small>AI · Hướng dẫn & số liệu 093</small></b></div><button id="roboReset" title="Xóa hội thoại">↺</button><button id="roboClose" aria-label="Đóng trợ lý">✕</button></div><div class="robo-toolbar"><button id="roboHome">Chủ đề</button><button type="button" id="roboCatalog" aria-haspopup="dialog">Kho tài liệu</button><label>Phạm vi GĐV <select id="roboGdv"><option value="">Tất cả GĐV</option>${[...new Set(ROWS.map(r=>r['GĐV thụ lý']))].sort().map(k=>`<option value="${esc(k)}">${esc(PTIGdv.gdvLabel(k))}</option>`).join('')}</select></label></div><div id="roboLog" class="robo-log" aria-live="polite"></div><form id="roboForm"><input id="roboInput" maxlength="1000" placeholder="Hỏi quy trình, biển số / số HSBT…" aria-label="Câu hỏi"><button type="button" id="roboMic" aria-label="Nhập bằng giọng nói">🎙</button><button type="submit" aria-label="Gửi câu hỏi">➤</button></form><small id="roboVoiceNote">AI nhận câu hỏi qua Cloudflare · Không nhập thông tin cá nhân khách hàng.</small></section>`);initRoboCatalog();roboMy=roboRead('093_robo_my')||'';$('roboGdv').value=roboMy;$('roboGdv').onchange=e=>{roboMy=e.target.value;roboWrite('093_robo_my',roboMy)};roboLog=[];const saved=roboRead('093_robo_log_v1');if(Array.isArray(saved))roboLog=saved.filter(x=>x&&x.role==='user'&&typeof x.text==='string').slice(-20).flatMap(x=>{let html;try{html=roboAnswer(x.text)}catch{html='<p>Hãy hỏi lại để tra cứu dữ liệu hiện tại.</p>'}return [{role:'user',text:x.text},{role:'bot',html}]});roboDraw(); // Only restore plain user text; rebuild bot answers from current code.
 $('roboClose').onclick=()=>roboToggle(false);$('roboHome').onclick=roboHome;$('roboReset').onclick=()=>{roboEpoch++;roboController?.abort();roboSetBusy(false);roboLog=[];roboWrite('093_robo_log_v1',[]);roboHome()};$('roboForm').onsubmit=e=>{e.preventDefault();roboAsk($('roboInput').value);$('roboInput').value=''};$('roboLog').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.entry){const k=tlKB().find(x=>x.id===b.dataset.entry);if(k){roboPush('user',k.q);roboPush('bot',roboEntry(k))}}else if(b.dataset.group){const g=window.TL_GROUPS.find(x=>x.id===b.dataset.group);roboPush('bot',`<h3>${esc(g.name)}</h3><div class="robo-chips">${roboChips(tlKB().filter(x=>x.g===g.id))}</div>`)}else if(b.dataset.record)showRecord(b.dataset.record)};const b=$('roboFab');let start=null,moved=false;b.onpointerdown=e=>{if(e.button!==0)return;const r=b.getBoundingClientRect();start={x:e.clientX,y:e.clientY,left:r.left,top:r.top};moved=false;b.setPointerCapture(e.pointerId)};b.onpointermove=e=>{if(!start)return;const dx=e.clientX-start.x,dy=e.clientY-start.y;if(Math.hypot(dx,dy)>6)moved=true;if(!moved)return;b.style.animation='none';b.style.left=Math.max(8,Math.min(innerWidth-68,start.left+dx))+'px';b.style.top=Math.max(8,Math.min(innerHeight-68,start.top+dy))+'px';b.style.right='auto';b.style.bottom='auto'};b.onpointerup=()=>{if(!start)return;start=null;if(moved){b.style.animation='';const r=b.getBoundingClientRect();roboWrite('093_robo_position',{x:r.left/innerWidth,y:r.top/innerHeight})}else roboToggle()};b.onpointercancel=()=>{start=null};b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();roboToggle()}};roboCheckAi();roboPosition();addEventListener('resize',()=>{roboPosition();roboFitViewport()});window.visualViewport?.addEventListener('resize',roboFitViewport);window.visualViewport?.addEventListener('scroll',roboFitViewport);$('roboPanel').addEventListener('focusin',roboFitViewport);$('roboPanel').addEventListener('focusout',()=>requestAnimationFrame(roboFitViewport));addEventListener('keydown',e=>{if(e.key==='Escape')roboToggle(false)});const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){$('roboMic').disabled=true;$('roboMic').title='Trình duyệt chưa hỗ trợ giọng nói'}else{$('roboMic').onclick=()=>{const sr=new SR();sr.lang='vi-VN';sr.onresult=e=>{$('roboInput').value=e.results[0][0].transcript;$('roboVoiceNote').textContent='Đã nhận giọng nói. Kiểm tra nội dung rồi bấm gửi.'};sr.onerror=()=>{$('roboVoiceNote').textContent='Không nhận được giọng nói. Bạn có thể gõ câu hỏi.'};$('roboVoiceNote').textContent='Micro do trình duyệt xử lý, có thể cần mạng và gửi âm thanh tới dịch vụ nhận giọng nói.';try{sr.start()}catch{}}}}
