@@ -34,7 +34,7 @@ button:disabled{cursor:default;box-shadow:none;opacity:.65}
 @media screen and (max-width:420px){h1{font-size:23px}.kpis{gap:11px}.card{padding:14px}.card small{font-size:11px}.card em{font-size:10px}.card strong{font-size:24px;margin:10px 0}.header-actions{gap:7px}.header-actions>button{padding:8px}}
 /* Stop decorative motion without changing SVG data geometry or visibility. */
 body[data-dashboard-motion="off"] *,body[data-dashboard-motion="off"] *::before,body[data-dashboard-motion="off"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.card:hover{transform:none!important}}
+@media(prefers-reduced-motion:reduce){:where(body:not([data-dashboard-motion="on"])) *,:where(body:not([data-dashboard-motion="on"])) *::before,:where(body:not([data-dashboard-motion="on"])) *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}:where(body:not([data-dashboard-motion="on"])) .card:hover{transform:none!important}}
 @media print{*,*::before,*::after{animation:none!important;transition:none!important}.card,.panel,.health-panel,.backlog-history-panel{box-shadow:none!important;backdrop-filter:none!important}.card:hover{transform:none!important}}
 
 .mail-table{overflow-x:auto}.mail-table input:not([type=checkbox]){min-width:145px;width:100%}.mail-table table{min-width:760px}.mail-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:18px 0}.mail-preview{width:min(95vw,850px);height:90vh}.mail-preview iframe{width:100%;height:calc(100% - 50px);border:0}@media print{#mailAdmin,.mail-preview{display:none!important}}

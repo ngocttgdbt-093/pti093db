@@ -1,18 +1,30 @@
-function setDashboardMotion(enabled){
- if(!enabled&&document.body.hasAttribute('data-dashboard-motion'))dashboardMotionFinish();
- document.body.dataset.dashboardMotion=enabled?'on':'off';
- try{localStorage.setItem('093_dashboard_motion',enabled?'on':'off')}catch{}
- document.querySelectorAll('[data-motion-toggle]').forEach(button=>{
-  button.textContent=enabled?'Tắt hoạt cảnh':'Bật hoạt cảnh';
-  button.setAttribute('aria-pressed',String(enabled));
- });
-}
-
 // Animate only navigation and its asynchronous chart loads; filtering stays immediate.
 let dashboardMotionNavigation=false,dashboardMotionObserver=null,dashboardPrinting=false;
 const dashboardMotionSeen=new WeakSet(),dashboardMotionJobs=new Set();
 const dashboardReducedMotion=typeof matchMedia==='function'?matchMedia('(prefers-reduced-motion: reduce)'):null;
-function dashboardMotionAllowed(){return document.body.dataset.dashboardMotion==='on'&&!dashboardPrinting&&!dashboardReducedMotion?.matches;}
+let dashboardMotionPreference;
+try{dashboardMotionPreference=localStorage.getItem('093_dashboard_motion')}catch{}
+
+function syncDashboardMotion(){
+ const enabled=dashboardMotionPreference==='always-on'||(dashboardMotionPreference!=='off'&&!dashboardReducedMotion?.matches);
+ document.body.dataset.dashboardMotion=enabled?'on':'off';
+ if(!enabled)dashboardMotionFilter();
+ document.querySelectorAll('[data-motion-toggle]').forEach(button=>{
+  button.textContent=enabled?'Tắt hoạt cảnh':'Bật hoạt cảnh';
+  button.title=!enabled&&dashboardReducedMotion?.matches?'Bật hoạt cảnh riêng cho Dashboard khi hệ thống đang giảm chuyển động':'';
+  button.setAttribute('aria-pressed',String(enabled));
+ });
+}
+function setDashboardMotion(enabled){
+ dashboardMotionPreference=enabled?'always-on':'off';
+ try{localStorage.setItem('093_dashboard_motion',dashboardMotionPreference)}catch{}
+ syncDashboardMotion();
+ if(enabled&&typeof render==='function'&&document.getElementById('content')?.firstElementChild){
+  dashboardMotionNavigate();
+  render();
+ }
+}
+function dashboardMotionAllowed(){return document.body.dataset.dashboardMotion==='on'&&!dashboardPrinting;}
 function dashboardMotionFinish(){for(const job of [...dashboardMotionJobs])job.finish();}
 function dashboardMotionFilter(){dashboardMotionNavigation=false;dashboardMotionFinish();}
 function dashboardMotionNavigate(){dashboardMotionFinish();dashboardMotionNavigation=true;}
@@ -82,6 +94,5 @@ document.addEventListener('input',e=>{if(e.target.closest('.filters,.history-fil
 document.addEventListener('change',e=>{if(e.target.closest('.filters,.history-filters,.health-heading,.history-cost-controls')||e.target.id==='dim')dashboardMotionFilter();},true);
 window.addEventListener('beforeprint',()=>{dashboardPrinting=true;dashboardMotionFinish();});
 window.addEventListener('afterprint',()=>{dashboardPrinting=false;});
-dashboardReducedMotion?.addEventListener?.('change',()=>{if(dashboardReducedMotion.matches)dashboardMotionFilter();});
-
-try{setDashboardMotion(localStorage.getItem('093_dashboard_motion')!=='off')}catch{setDashboardMotion(true)}
+dashboardReducedMotion?.addEventListener?.('change',syncDashboardMotion);
+syncDashboardMotion();
