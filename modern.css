@@ -38,3 +38,5 @@ body[data-dashboard-motion="off"] *,body[data-dashboard-motion="off"] *::before,
 @media print{*,*::before,*::after{animation:none!important;transition:none!important}.card,.panel,.health-panel,.backlog-history-panel{box-shadow:none!important;backdrop-filter:none!important}.card:hover{transform:none!important}}
 
 .mail-table{overflow-x:auto}.mail-table input:not([type=checkbox]){min-width:145px;width:100%}.mail-table table{min-width:760px}.mail-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:18px 0}.mail-preview{width:min(95vw,850px);height:90vh}.mail-preview iframe{width:100%;height:calc(100% - 50px);border:0}#mailLogin form{display:grid;gap:14px}#mailLogin input{display:block;width:100%}@media print{#mailAdmin,#mailLogin,.mail-preview{display:none!important}}
+
+.mail-batch{margin:12px 0;padding:12px 16px;border:1px solid #cde2ec;border-radius:12px;background:#eef7fa;color:#214e66}.mail-batch ul{margin:6px 0 0;padding-left:20px}
