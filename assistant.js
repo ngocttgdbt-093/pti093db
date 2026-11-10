@@ -118,6 +118,9 @@ function roboLocalLookup(q){return !!roboClaimQuery(q)||/\d{2}[a-zA-Z]{1,2}[\s.-
 function roboSetBusy(busy){roboBusy=busy;const send=$('roboForm')?.querySelector('button[type="submit"]');if(send)send.disabled=busy;const input=$('roboInput');if(input)input.disabled=busy;const log=$('roboLog');if(log)log.setAttribute('aria-busy',String(busy))}
 async function roboCheckAi(){try{const r=await authFetch('/api/assistant');const state=await r.json();roboAiConfigured=r.ok&&state.configured===true}catch{roboAiConfigured=false}const label=$('roboPanel')?.querySelector('.robo-top small');if(label)label.textContent=roboAiConfigured?'AI · Hướng dẫn & số liệu 093':'Tra cứu dự phòng · Hướng dẫn & hồ sơ'}
 function roboFallback(q,code){const messages={AI_QUOTA:'AI đã hết hạn mức miễn phí hôm nay.',AI_RATE_LIMIT:'AI đang tạm giới hạn số lượt hỏi; hãy thử lại sau.',AI_CONFIGURATION:'Kết nối AI chưa được xác thực.',AI_NOT_CONFIGURED:'AI chưa được cấu hình.',DATA_UNAVAILABLE:'Chưa tải được dữ liệu cho AI.'};let html;try{html=roboAnswer(q)}catch{html='<p>Chưa tra cứu được. Hãy dùng menu Tra cứu hồ sơ.</p>'}return '<p class="tl-warn">'+esc(messages[code]||'AI tạm thời không phản hồi.')+' Đang dùng trợ lý tra cứu dự phòng.</p>'+html}
+function roboDutyIntent(q){
+ return /\b(lich truc|ai truc|truc (?:chinh|thay|hien truong|giam dinh|ngoai gio|trong gio)|(?:hom nay|ngay mai|toi nay) (?:ai )?truc|truc (?:ngay|hom nay|hom qua|hom nao|mai|cuoi tuan|khi nao|toi nay|dem nay))\b/.test(tlNorm(q));
+}
 function roboDocumentIntent(q){
  const n=tlNorm(q);
  if(/^(?:(?:mo|xem|tim|vao|cho toi xem) )?(?:kho|danh muc) tai lieu(?: (?:o )?dau)?$/.test(n))return 'catalog';
@@ -167,11 +170,11 @@ async function roboDownloadDocument(id,button,status,fallbackName){
 }
 async function roboAsk(q){
  q=q.trim().slice(0,1000);if(!q||roboBusy)return;
- const documents=roboDocumentIntent(q);
+ const duty=roboDutyIntent(q),documents=duty?'':roboDocumentIntent(q);
  const history=roboLog.filter(m=>m.role==='user'&&!roboLocalLookup(m.text)&&!['direct','catalog'].includes(roboDocumentIntent(m.text))||m.aiText).slice(-6).map(m=>({role:m.role==='user'?'user':'assistant',content:m.role==='user'?m.text:m.aiText}));
  roboPush('user',q);
  if(documents==='catalog'){$('roboCatalog').click();return}
- if(!documents&&roboLocalLookup(q)){try{roboPush('bot',roboAnswer(q))}catch{roboPush('bot','<p>Không xử lý được tra cứu. Hãy dùng menu Tra cứu hồ sơ.</p>')}return}
+ if(!duty&&!documents&&roboLocalLookup(q)){try{roboPush('bot',roboAnswer(q))}catch{roboPush('bot','<p>Không xử lý được tra cứu. Hãy dùng menu Tra cứu hồ sơ.</p>')}return}
  const epoch=++roboEpoch;roboController=new AbortController();const timer=setTimeout(()=>roboController?.abort(),100000);roboSetBusy(true);
  const pending={role:'bot',html:'<p>Đang đọc hướng dẫn và phân tích câu hỏi…</p>'};roboLog.push(pending);roboDraw();
  const documentSearch=documents?roboFindChatDocuments(q,roboController.signal):Promise.resolve([]);
@@ -185,6 +188,10 @@ async function roboAsk(q){
   const result=await response.json();if(epoch!==roboEpoch)return;
   if(!response.ok)pending.html=roboFallback(q,result.code);
   else if(typeof result.answer==='string'&&result.answer.trim()){
+   if(result.tools?.includes('duty_schedule')){
+    pending.html='<h3>Tra cứu lịch trực 093</h3>'+tlFmt(result.answer)+(result.documents?.length?roboDocumentCards(result.documents):'');
+    return;
+   }
    if(result.tools?.includes('legal_library')){
     pending.legalAnswer=true;
     pending.html='<h3>Tra cứu pháp lý trong kho 093</h3>'+tlFmt(result.answer)+(result.documents?.length?roboDocumentCards(result.documents):'');
@@ -204,7 +211,7 @@ async function roboAsk(q){
   }
  }
 }
-function roboHome(){roboPush('bot',`<h3>Trợ lý GĐV 093</h3><p>Hỏi AI về nghiệp vụ và số liệu tổng hợp; tra cứu trực tiếp ${tlKB().length} hướng dẫn${window.TL_FORMS.length?", "+window.TL_FORMS.length+" biểu mẫu có tệp":""} và dữ liệu 093. Gõ biển số, số HSBT, hoặc hỏi “Cho tôi mẫu biên bản hiện trường” để tìm và tải ngay trong chat.</p><div class="robo-chips">${window.TL_GROUPS.map(g=>`<button data-group="${esc(g.id)}">${esc(g.icon+' '+g.name)}</button>`).join('')}</div><p class="robo-source">AI nhận câu hỏi, hướng dẫn liên quan và số liệu tổng hợp qua Cloudflare; không gửi toàn bộ danh sách hồ sơ. Tra cứu biển số/số HSBT và nút chủ đề xử lý trực tiếp. Kho hướng dẫn chưa đối chiếu toàn bộ văn bản gốc. Hết hạn mức miễn phí sẽ dùng tra cứu dự phòng.</p>`)}
+function roboHome(){roboPush('bot',`<h3>Trợ lý GĐV 093</h3><p>Hỏi AI về nghiệp vụ và số liệu tổng hợp; tra cứu trực tiếp ${tlKB().length} hướng dẫn${window.TL_FORMS.length?", "+window.TL_FORMS.length+" biểu mẫu có tệp":""} và dữ liệu 093. Gõ biển số, số HSBT, hoặc hỏi “Ai trực ngày mai?” để tra cứu. Gõ “Tải lịch trực” để tải bản Excel.</p><div class="robo-chips">${window.TL_GROUPS.map(g=>`<button data-group="${esc(g.id)}">${esc(g.icon+' '+g.name)}</button>`).join('')}</div><p class="robo-source">AI nhận câu hỏi, hướng dẫn liên quan và số liệu tổng hợp qua Cloudflare; không gửi toàn bộ danh sách hồ sơ. Tra cứu biển số/số HSBT và nút chủ đề xử lý trực tiếp. Kho hướng dẫn chưa đối chiếu toàn bộ văn bản gốc. Hết hạn mức miễn phí sẽ dùng tra cứu dự phòng.</p>`)}
 function roboPosition(){const b=$('roboFab'),p=roboRead('093_robo_position');if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y)){b.style.left=Math.max(8,Math.min(innerWidth-68,p.x*innerWidth))+'px';b.style.top=Math.max(8,Math.min(innerHeight-68,p.y*innerHeight))+'px';b.style.right='auto';b.style.bottom='auto'}}
 // Fixed elements use the layout viewport on iOS; the keyboard reduces only the
 // visual viewport. Keep the whole panel, including its composer, inside that area.
@@ -289,8 +296,10 @@ function initRoboCatalog(){
      add(details,'p',excerpt);
     }
     if(item.download&&dialog.querySelector('details[data-admin]').open){
-     const control=add(card,'label','Nạp bản sao (quản trị) ');
+     const duty=item.id==='pti093-lich-truc-hien-truong';
+     const control=add(card,'label',duty?'Cập nhật lịch trực (quản trị) ':'Nạp bản sao (quản trị) ');
      const picker=add(control,'input','');picker.type='file';
+     if(duty)picker.accept='.xlsx';
      picker.onchange=async()=>{
       const file=picker.files[0];picker.value='';
       if(!file)return;
@@ -300,9 +309,12 @@ function initRoboCatalog(){
        const query=new URLSearchParams({file:item.id,name:file.name});
        const response=await authFetch('/api/document-catalog?'+query,
         {method:'PUT',headers:{'X-Database-Authorization':token},body:file});
-       if(!response.ok)throw Error();
+       if(!response.ok){
+        const error=duty?await response.json().catch(()=>null):null;
+        throw Error(error?.message||'Chưa nạp được bản sao tài liệu.');
+       }
        await load();
-      }catch{status.textContent='Chưa nạp được bản sao tài liệu.'}
+      }catch(error){status.textContent=error.message||'Chưa nạp được bản sao tài liệu.'}
      };
     }
    }
