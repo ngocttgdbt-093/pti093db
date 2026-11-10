@@ -1,0 +1,67 @@
+name: Graphify source snapshot
+
+on:
+  push:
+    branches: [test/graphify-drive-20261111]
+  schedule:
+    - cron: '20 20 * * *' # 03:20 Asia/Ho_Chi_Minh
+
+permissions:
+  contents: read
+
+concurrency:
+  group: graphify-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  graphify:
+    if: github.event_name == 'push' || (github.ref == 'refs/heads/main' && vars.GRAPHIFY_SCHEDULE_ENABLED == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Stage reviewed dashboard source only
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="$(mktemp -d "$RUNNER_TEMP/graphify-source.XXXXXX")"
+          sources=(
+            alerts.js
+            chart-tooltip.js
+            claim-logic.js
+            cohort-cost.js
+            xo-contract.mjs
+          )
+          for source in "${sources[@]}"; do
+            test -f "$source" && test ! -L "$source"
+            git show "HEAD:$source" > "$stage/$source"
+            test -s "$stage/$source"
+          done
+          printf 'GRAPHIFY_SOURCE=%s\n' "$stage" >> "$GITHUB_ENV"
+      - name: Install Graphify CLI in isolated environment
+        run: |
+          python3 -m pip install --user pipx
+          python3 -m pipx install graphifyy==0.9.105
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Generate and verify source graph
+        working-directory: ${{ env.GRAPHIFY_SOURCE }}
+        run: |
+          graphify update .
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          graph_path = Path("graphify-out/graph.json")
+          assert graph_path.is_file() and not graph_path.is_symlink()
+          graph = json.loads(graph_path.read_text(encoding="utf-8"))
+          assert graph.get("nodes"), "Graph must contain source nodes"
+          PY
+      - name: Upload code graph artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: graphify-pti093db-${{ github.sha }}
+          path: ${{ env.GRAPHIFY_SOURCE }}/graphify-out/graph.json
+          if-no-files-found: error
+          retention-days: 7
