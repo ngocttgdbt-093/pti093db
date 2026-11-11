@@ -63,7 +63,8 @@ function monthlyBacklogChart(month,days){
  const [year,monthNumber]=month.split('-').map(Number);
  const slots=new Date(Date.UTC(year,monthNumber,0)).getUTCDate();
  const left=48,right=left+slots*36,width=right+16,bottom=222,top=24;
- const max=Math.max(700,Math.ceil(Math.max(...days.map(day=>day.total))/100)*100);
+ const peak=Math.max(0,...days.map(day=>day.total));
+ const max=Math.max(50,Math.ceil(peak/0.75/50)*50);
  const x=day=>left+(day-.5)*36,y=value=>bottom-value/max*(bottom-top);
  const groups=[
   {index:2,label:'Trên 90 ngày',fill:'#d94356',light:'#ff9298',line:'#a92033'},
