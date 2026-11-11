@@ -46,49 +46,112 @@ function prepare(d) { const f = new Set(d.f.map(id)), g = new Set(d.g.map(id)), 
     throw Error('Hồ sơ đồng thời ở nguồn Giải quyết và Tồn'); if ([...f].some(k => !g.has(k) && !t.has(k)))
     throw Error('Hồ sơ phát sinh chưa được phân loại'); return [...d.g.map(r => ({ ...r, _state: 'Đã giải quyết', _year: f.has(id(r)) ? String(reportYear()) : 'Trước ' + reportYear() })), ...d.t.map(r => ({ ...r, _state: 'Tồn', _year: f.has(id(r)) ? String(reportYear()) : 'Trước ' + reportYear() }))]; }
 function filtered(source = ROWS) { let q = norm($('q').value), nv = $('nv').value; return source.filter(r => (!$('gdv').value || r['GĐV thụ lý'] === $('gdv').value) && (!nv || (nv === 'other' ? !/^XO\.[14]/.test(r['Mã nghiệp vụ']) : String(r['Mã nghiệp vụ']).startsWith(nv))) && (!q || norm([id(r), r['Biển số xe'], garage(r), r['GĐV thụ lý']].join(' ')).includes(q))); }
-function go(p) { if(['Dữ liệu','Quản trị GĐV'].includes(p))p='Quản trị hệ thống'; const leavingAdmin=page==='Quản trị hệ thống'&&p!=='Quản trị hệ thống'; if(typeof dashboardMotionNavigate==='function')dashboardMotionNavigate(); page = p; if(leavingAdmin)adminLogout(); document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.textContent === p)); render(); window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }
+function go(p, { swipe = false } = {}) { if(['Dữ liệu','Quản trị GĐV'].includes(p))p='Quản trị hệ thống'; const leavingAdmin=page==='Quản trị hệ thống'&&p!=='Quản trị hệ thống'; if(swipe) dashboardMotionFilter(); else if(typeof dashboardMotionNavigate==='function')dashboardMotionNavigate(); page = p; if(leavingAdmin)adminLogout(); document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.textContent === p)); render(); window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }
 ;
 function bindMobileMenuSwipe(content) {
+    const surface = content.closest('main') || content;
     let gesture = null;
-    const reserved = 'a, button, input, select, textarea, label, summary, dialog, table, canvas, svg, [role="button"], [contenteditable="true"]';
-    function allowsSwipe(target) {
-        if (!target.closest || target.closest(reserved)) return false;
-        for (let node = target; node && node !== content; node = node.parentElement) {
-            if (node.scrollWidth > node.clientWidth + 2 && /auto|scroll/.test(getComputedStyle(node).overflowX)) return false;
+    let settling = false;
+    const translate = x => `translate3d(${x}px, 0, 0)`;
+    const adjacent = dx => pages[pages.indexOf(page) + (dx < 0 ? 1 : -1)];
+    const animate = () => typeof content.animate === 'function' && dashboardMotionAllowed();
+
+    function scrollsHorizontally(target) {
+        for (let node = target; node && node !== surface; node = node.parentElement) {
+            if (node.scrollWidth > node.clientWidth + 2 && /auto|scroll/.test(getComputedStyle(node).overflowX)) {
+                return true;
+            }
         }
-        return !window.getSelection()?.toString();
+        return false;
     }
-    content.addEventListener('touchstart', event => {
-        gesture = null;
-        if (event.touches.length !== 1 || !allowsSwipe(event.target)) return;
-        const touch = event.touches[0];
-        // Leave the edges free for the browser's back and forward gestures.
-        if (touch.clientX < 24 || touch.clientX > window.innerWidth - 24) return;
-        gesture = { id: touch.identifier, x: touch.clientX, y: touch.clientY, page, started: performance.now() };
-    }, { passive: true });
-    content.addEventListener('touchmove', event => {
-        if (!gesture) return;
-        const touch = event.touches[0];
-        if (event.touches.length !== 1 || touch.identifier !== gesture.id) {
-            gesture = null;
+
+    async function settle(start, next) {
+        const offset = start.offset;
+        if (!animate() || !offset) {
+            content.style.transform = '';
+            if (next && page === start.page) go(next, { swipe: true });
             return;
         }
-        const dx = Math.abs(touch.clientX - gesture.x);
-        const dy = Math.abs(touch.clientY - gesture.y);
-        if (dy > 24 && dy > dx) gesture = null;
+        settling = true;
+        try {
+            const direction = Math.sign(offset);
+            const exit = next ? direction * Math.max(80, Math.abs(offset)) : 0;
+            const outgoing = content.animate(
+                [{ transform: translate(offset), opacity: 1 }, { transform: translate(exit), opacity: next ? 0.55 : 1 }],
+                { duration: next ? 90 : 170, easing: 'ease-out', fill: 'forwards' }
+            );
+            await outgoing.finished.catch(() => {});
+            content.style.transform = '';
+            outgoing.cancel();
+            if (next && page === start.page) {
+                go(next, { swipe: true });
+                const incoming = content.animate(
+                    [{ transform: translate(-direction * 76), opacity: 0.55 }, { transform: translate(0), opacity: 1 }],
+                    { duration: 220, easing: 'cubic-bezier(.2,.7,.2,1)' }
+                );
+                await incoming.finished.catch(() => {});
+            }
+        } finally {
+            content.style.transform = '';
+            settling = false;
+        }
+    }
+
+    surface.addEventListener('touchstart', event => {
+        if (settling) return;
+        if (gesture) {
+            const start = gesture;
+            gesture = null;
+            void settle(start);
+        }
+        if (event.touches.length !== 1 || scrollsHorizontally(event.target)) return;
+        if (event.target.closest?.('dialog, input[type="range"]') || window.getSelection()?.toString()) return;
+        const touch = event.touches[0];
+        gesture = { id: touch.identifier, x: touch.clientX, y: touch.clientY, page, horizontal: false, offset: 0 };
     }, { passive: true });
-    content.addEventListener('touchcancel', () => { gesture = null; }, { passive: true });
-    content.addEventListener('touchend', event => {
+
+    surface.addEventListener('touchmove', event => {
+        if (!gesture) return;
+        const touch = event.touches[0];
+        if (event.touches.length !== 1 || touch.identifier !== gesture.id || gesture.page !== page) {
+            const start = gesture;
+            gesture = null;
+            void settle(start);
+            return;
+        }
+        const dx = touch.clientX - gesture.x;
+        const dy = touch.clientY - gesture.y;
+        if (!gesture.horizontal) {
+            if (Math.abs(dy) >= 10 && Math.abs(dy) > Math.abs(dx)) {
+                gesture = null;
+                return;
+            }
+            if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+            gesture.horizontal = true;
+        }
+        if (event.cancelable) event.preventDefault();
+        if (!animate()) return;
+        const distance = adjacent(dx) ? Math.min(160, Math.abs(dx) * 0.8) : Math.min(28, Math.abs(dx) * 0.22);
+        gesture.offset = Math.sign(dx) * distance;
+        content.style.transform = translate(gesture.offset);
+    }, { passive: false });
+
+    surface.addEventListener('touchcancel', () => {
         const start = gesture;
         gesture = null;
-        if (!start || start.page !== page || event.touches.length || performance.now() - start.started > 800) return;
-        const touch = [...event.changedTouches].find(item => item.identifier === start.id);
-        if (!touch) return;
-        const dx = touch.clientX - start.x;
-        const dy = touch.clientY - start.y;
-        if (Math.abs(dx) < 65 || Math.abs(dx) < Math.abs(dy) * 1.7) return;
-        const next = pages[pages.indexOf(page) + (dx < 0 ? 1 : -1)];
-        if (next) go(next);
+        if (start) void settle(start);
+    }, { passive: true });
+
+    surface.addEventListener('touchend', event => {
+        const start = gesture;
+        gesture = null;
+        if (!start) return;
+        const touch = Array.from(event.changedTouches).find(item => item.identifier === start.id);
+        const dx = touch ? touch.clientX - start.x : 0;
+        const dy = touch ? touch.clientY - start.y : 0;
+        const next = start.horizontal && !event.touches.length && start.page === page &&
+            Math.abs(dx) >= 54 && Math.abs(dx) >= Math.abs(dy) * 1.25 ? adjacent(dx) : null;
+        void settle(start, next);
     }, { passive: true });
 }
 function resetFilters() { $('gdv').value = ''; $('nv').value = ''; $('q').value = ''; render(); }
