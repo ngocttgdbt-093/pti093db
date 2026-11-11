@@ -63,29 +63,29 @@ function monthlyBacklogChart(month,days){
  const [year,monthNumber]=month.split('-').map(Number);
  const slots=new Date(Date.UTC(year,monthNumber,0)).getUTCDate();
  const left=48,right=left+slots*36,width=right+16,bottom=222,top=24;
- const max=Math.max(4,Math.ceil(Math.max(...days.map(day=>day.total))/4)*4);
+ const max=Math.max(700,Math.ceil(Math.max(...days.map(day=>day.total))/100)*100);
  const x=day=>left+(day-.5)*36,y=value=>bottom-value/max*(bottom-top);
  const groups=[
-  {index:2,label:'Trên 90 ngày',fill:'#d94356',line:'#a92033'},
-  {index:1,label:'45–90 ngày',fill:'#e98627',line:'#a75000',dashed:true},
-  {index:0,label:'Dưới 45 ngày',fill:'#229b73',line:'#126749',dashed:true}
+  {index:2,label:'Trên 90 ngày',fill:'#d94356',light:'#ff9298',line:'#a92033'},
+  {index:1,label:'45–90 ngày',fill:'#e98627',light:'#ffb472',line:'#a75000',dashed:true},
+  {index:0,label:'Dưới 45 ngày',fill:'#229b73',light:'#80d6b6',line:'#126749',dashed:true}
  ];
  const columns=[...days].sort((a,b)=>a.date.localeCompare(b.date)).map(entry=>{
   const day=Number(entry.date.slice(8)),counts=groups.map(group=>entry.counts[group.index]);
   const levels=[counts[0],counts[0]+counts[1],counts[0]+counts[1]+counts[2]];
   return {entry,day,counts,levels};
  });
- const grid=[0,1,2,3,4].map(tick=>{
-  const value=max*tick/4;
-  return `<line x1="${left}" x2="${right}" y1="${y(value)}" y2="${y(value)}" stroke="#dfe7ec"/><text x="${left-8}" y="${y(value)+4}" text-anchor="end">${num(value)}</text>`;
- }).join('');
+ const axes=`<path d="M${left},${top} V${bottom} H${right}" fill="none" stroke="#b9cbd7"/>${[0,max].map(value=>`<line x1="${left-4}" x2="${left}" y1="${y(value)}" y2="${y(value)}" stroke="#b9cbd7"/><text x="${left-8}" y="${y(value)+4}" text-anchor="end">${num(value)}</text>`).join('')}`;
+ const gradients=groups.map((group,i)=>`<linearGradient id="monthly-backlog-fill-${i}"><stop stop-color="${group.fill}"/><stop offset=".45" stop-color="${group.light}"/><stop offset="1" stop-color="${group.fill}"/></linearGradient>`).join('');
  const labels=Array.from({length:slots},(_,i)=>`<text x="${x(i+1)}" y="244" text-anchor="middle">${String(i+1).padStart(2,'0')}</text>`).join('');
  const bars=columns.map(({entry,day,counts,levels})=>{
   const detail=`${historyDay(entry.date)} · Tổng: ${num(entry.total)} hồ sơ · ${groups.map((group,i)=>group.label+': '+num(counts[i])).join(' · ')}${entry.unknown?' · Thiếu tuổi tồn: '+num(entry.unknown):''}`;
-  const rects=groups.map((group,i)=>`<rect x="${x(day)-10}" y="${y(levels[i])}" width="20" height="${y(levels[i-1]||0)-y(levels[i])}" fill="${group.fill}"/>`).join('');
+  const center=x(day),topGroup=counts.findLastIndex(count=>count>0),capY=y(levels[2]);
+  const rects=groups.map((group,i)=>counts[i]?`<rect x="${center-10}" y="${y(levels[i])}" width="20" height="${y(levels[i-1]||0)-y(levels[i])}" fill="url(#monthly-backlog-fill-${i})"/>`:'').join('');
+  const cap=topGroup<0?'':`<ellipse cx="${center}" cy="${capY}" rx="10" ry="3.5" fill="${groups[topGroup].light}" stroke="${groups[topGroup].fill}"/>`;
   return `<g role="button" tabindex="0" aria-label="${esc(detail)}" onclick="backlogHistoryPoint('${entry.date}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();backlogHistoryPoint('${entry.date}')}">
    <title>${esc(detail)}</title><rect x="${x(day)-13}" y="${top}" width="26" height="${bottom-top+8}" fill="transparent"/>
-   ${rects}<text x="${x(day)}" y="${y(levels[2])-8}" text-anchor="middle">${num(entry.total)}</text>
+   <g class="monthly-backlog-column">${rects}${cap}<text x="${center}" y="${capY-9}" text-anchor="middle">${num(entry.total)}</text></g>
   </g>`;
  }).join('');
  const lines=groups.map((group,i)=>{
@@ -94,7 +94,7 @@ function monthlyBacklogChart(month,days){
   return `<path d="${path}" fill="none" stroke="${group.line}" stroke-width="2"${group.dashed?' stroke-dasharray="6 4"':''}/>${dots}`;
  }).join('');
  return `<div class="history-svg"><svg viewBox="0 0 ${width} 256" style="min-width:${width}px" role="group" aria-label="Cột chồng hồ sơ tồn từng ngày trong tháng">
-  ${grid}${labels}<g class="monthly-backlog-marks">${bars}<g pointer-events="none" aria-hidden="true">${lines}</g></g>
+  <defs>${gradients}</defs>${axes}${labels}${bars}<g class="monthly-backlog-lines" pointer-events="none" aria-hidden="true">${lines}</g>
  </svg></div><div class="history-legend">${groups.map(group=>`<span><i style="background:${group.fill}"></i>${group.label}</span>`).join('')}</div>`;
 }
 function backlogTrendChart(series,percent){

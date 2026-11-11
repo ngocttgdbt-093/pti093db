@@ -24,6 +24,8 @@
 .history-dot.green{background:#15803d}
 
 .monthly-backlog-panel{margin:24px 0;min-width:0}
-.monthly-backlog-marks{animation:monthly-backlog-appear .45s ease-out both}
-.monthly-backlog-marks [role=button]:focus-visible{outline:2px solid #2179ad;outline-offset:2px}
+.monthly-backlog-column{transform-box:view-box;transform-origin:0 222px;animation:monthly-backlog-rise .55s cubic-bezier(.2,.7,.3,1) both}
+.monthly-backlog-lines{animation:monthly-backlog-appear .3s ease-out .48s both}
+.monthly-backlog-panel [role=button]:focus-visible{outline:2px solid #2179ad;outline-offset:2px}
+@keyframes monthly-backlog-rise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 @keyframes monthly-backlog-appear{from{opacity:0}to{opacity:1}}
