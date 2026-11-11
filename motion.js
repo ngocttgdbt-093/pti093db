@@ -39,6 +39,7 @@ function dashboardMotionSweep(){
  }
  for(const element of host.querySelectorAll('.card strong,.service-kpis b,.money')){if(dashboardMotionSeen.has(element))continue;dashboardMotionSeen.add(element);dashboardMotionNumber(element);}
  for(const element of host.querySelectorAll('.animated-column,.xo-cylinder,.history-svg svg rect,.track>span')){
+  if(element.closest('.monthly-backlog-panel'))continue;
   if(dashboardMotionSeen.has(element))continue;dashboardMotionSeen.add(element);let target=element;
   if(element.tagName.toLowerCase()==='g'){
    const shapes=[...element.children].filter(n=>['rect','ellipse','path'].includes(n.tagName.toLowerCase()));
@@ -49,6 +50,7 @@ function dashboardMotionSweep(){
   dashboardTrackAnimation(target,[{transform:horizontal?'scaleX(.001)':'scaleY(.001)',opacity:.25},{transform:horizontal?'scaleX(1)':'scaleY(1)',opacity:1}],{duration:900});
  }
  for(const path of host.querySelectorAll('.history-svg path[fill="none"],.cohort-chart path[fill="none"]')){
+  if(path.closest('.monthly-backlog-panel'))continue;
   if(dashboardMotionSeen.has(path))continue;dashboardMotionSeen.add(path);if(typeof path.getTotalLength!=='function')continue;
   let length;try{length=path.getTotalLength()}catch{continue}if(!length)continue;
   const oldArray=path.style.strokeDasharray,oldOffset=path.style.strokeDashoffset;path.style.strokeDasharray=String(length);
