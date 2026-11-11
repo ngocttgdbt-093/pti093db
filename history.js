@@ -29,6 +29,7 @@ function backlogHistoryPanel(){return `<section class="panel backlog-history-pan
 async function loadBacklogHistory(){
  const hosts=['backlogHistoryBody','healthHistoryBody','monthlyBacklogBody'];
  if(!hosts.some(id=>$(id)))return;const epoch=++backlogHistoryEpoch,scope=historyScope();
+ backlogHistoryState=null;
  try{const r=await authFetch('/api/backlog-history?'+new URLSearchParams({gdv:scope,date:REPORT_META.date,healthScale:'400'}));const d=await r.json();if(!r.ok)throw Error(d.errorCode);if(epoch!==backlogHistoryEpoch||scope!==historyScope()||!hosts.some(id=>$(id)))return;backlogHistoryState=d;
  if($('backlogHistoryBody'))$('backlogHistoryBody').innerHTML=`<div class="backlog-history-charts"><div><h3>Tỷ lệ hồ sơ theo nhóm tuổi</h3>${backlogTrendChart(d.series,true)}</div><div><h3>Tổng số hồ sơ tồn theo ngày</h3>${backlogTrendChart(d.series,false)}</div></div><p class="note">${esc(d.method)}</p>`;
  drawHealthHistory();
@@ -36,10 +37,24 @@ async function loadBacklogHistory(){
  }catch(e){if(epoch===backlogHistoryEpoch){for(const id of hosts)if($(id))$(id).innerHTML=historyError(e);}}
 }
 
+function setMonthlyBacklogGdv(value){
+ const filter=$('gdv');
+ if(filter.value===value)return;
+ filter.value=value;
+ return render();
+}
 function monthlyBacklogPanel(){
+ const selected=historyScope();
+ const options=Array.from($('gdv').options,option=>{
+  const label=option.value?PTIGdv.gdvLabel(option.value):option.text;
+  return `<option value="${esc(option.value)}"${option.value===selected?' selected':''}>${esc(label)}</option>`;
+ }).join('');
  return `<section class="panel monthly-backlog-panel" aria-labelledby="monthlyBacklogTitle">
   <div class="health-heading"><h2 id="monthlyBacklogTitle">HỒ SƠ TỒN THEO NGÀY</h2>
-  <label>Tháng theo dõi<select id="monthlyBacklogMonth" aria-label="Tháng hồ sơ tồn" onchange="monthlyBacklogMonth=this.value;drawMonthlyBacklogHistory()"></select></label></div>
+  <div class="monthly-backlog-filters">
+   <label>Giám định viên<select id="monthlyBacklogGdv" aria-label="Giám định viên của biểu đồ tồn" onchange="setMonthlyBacklogGdv(this.value)">${options}</select></label>
+   <label>Tháng theo dõi<select id="monthlyBacklogMonth" aria-label="Tháng hồ sơ tồn" disabled onchange="monthlyBacklogMonth=this.value;drawMonthlyBacklogHistory()"></select></label>
+  </div></div>
   <div id="monthlyBacklogBody" aria-live="polite">Đang đọc lịch sử hồ sơ tồn…</div>
  </section>`;
 }

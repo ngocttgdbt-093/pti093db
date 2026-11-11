@@ -29,3 +29,7 @@
 .monthly-backlog-panel [role=button]:focus-visible{outline:2px solid #2179ad;outline-offset:2px}
 @keyframes monthly-backlog-rise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 @keyframes monthly-backlog-appear{from{opacity:0}to{opacity:1}}
+
+.monthly-backlog-panel .health-heading{display:flex;justify-content:space-between}
+.monthly-backlog-filters{display:flex;flex-wrap:wrap;gap:8px 14px;max-width:100%}
+.monthly-backlog-filters label{display:grid;gap:4px;flex:1 1 auto}
