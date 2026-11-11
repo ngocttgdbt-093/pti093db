@@ -1,7 +1,7 @@
 let adminSessionToken='',adminEpoch=0,adminTab='data',adminLoginPending=false,adminContentState=null;
 const adminTabs=[['data','Dữ liệu báo cáo'],['duty','Lịch trực'],['documents','Kho tài liệu'],['mail','GĐV & Email']];
-function adminHubPanel(dataHtml=''){
- if(!adminSessionToken)return `<section class="panel admin-locked"><div class="admin-lock-icon">🔐</div><h2>Quản trị hệ thống</h2><p>Đăng nhập để cập nhật dữ liệu, lịch trực, tài liệu và cấu hình GĐV/email.</p><button class="import-primary" onclick="adminLogin()">Đăng nhập quản trị</button><p class="note">Dùng mật khẩu quản trị hiện hành. Quyền quản trị tự khóa khi chuyển sang menu khác.</p></section>`;
+function adminHubPanel(dataHtml='', locked=false){
+ if(locked||!adminSessionToken)return `<section class="panel admin-locked"><div class="admin-lock-icon">🔐</div><h2>Quản trị hệ thống</h2><p>Đăng nhập để cập nhật dữ liệu, lịch trực, tài liệu và cấu hình GĐV/email.</p><button class="import-primary" onclick="adminLogin()">Đăng nhập quản trị</button><p class="note">Dùng mật khẩu quản trị hiện hành. Quyền quản trị tự khóa khi chuyển sang menu khác.</p></section>`;
  const content=adminTab==='data'?dataHtml:adminTab==='mail'?mailAdminPanel():adminContentPanel(adminTab==='duty'?'duty':'document');
  return `<div class="admin-toolbar"><div><strong>Quản trị hệ thống</strong><small>Đã đăng nhập · Tự khóa khi chuyển menu</small></div><button onclick="adminLogout()">Đăng xuất quản trị</button></div><nav class="admin-tabs" aria-label="Các mục quản trị">${adminTabs.map(([id,label])=>`<button type="button" class="${adminTab===id?'active':''}" aria-pressed="${adminTab===id}" onclick="adminSelectTab('${id}')">${label}</button>`).join('')}</nav><div class="admin-content">${content}</div>`;
 }

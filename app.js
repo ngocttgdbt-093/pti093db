@@ -46,10 +46,38 @@ function prepare(d) { const f = new Set(d.f.map(id)), g = new Set(d.g.map(id)), 
     throw Error('Hồ sơ đồng thời ở nguồn Giải quyết và Tồn'); if ([...f].some(k => !g.has(k) && !t.has(k)))
     throw Error('Hồ sơ phát sinh chưa được phân loại'); return [...d.g.map(r => ({ ...r, _state: 'Đã giải quyết', _year: f.has(id(r)) ? String(reportYear()) : 'Trước ' + reportYear() })), ...d.t.map(r => ({ ...r, _state: 'Tồn', _year: f.has(id(r)) ? String(reportYear()) : 'Trước ' + reportYear() }))]; }
 function filtered(source = ROWS) { let q = norm($('q').value), nv = $('nv').value; return source.filter(r => (!$('gdv').value || r['GĐV thụ lý'] === $('gdv').value) && (!nv || (nv === 'other' ? !/^XO\.[14]/.test(r['Mã nghiệp vụ']) : String(r['Mã nghiệp vụ']).startsWith(nv))) && (!q || norm([id(r), r['Biển số xe'], garage(r), r['GĐV thụ lý']].join(' ')).includes(q))); }
-function go(p, { swipe = false } = {}) { if(['Dữ liệu','Quản trị GĐV'].includes(p))p='Quản trị hệ thống'; const leavingAdmin=page==='Quản trị hệ thống'&&p!=='Quản trị hệ thống'; if(swipe) dashboardMotionFilter(); else if(typeof dashboardMotionNavigate==='function')dashboardMotionNavigate(); page = p; if(leavingAdmin)adminLogout(); document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.textContent === p)); render(); window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }
-;
+function go(p, { swipe = false } = {}) {
+    if (['Dữ liệu', 'Quản trị GĐV'].includes(p)) p = 'Quản trị hệ thống';
+    const leavingAdmin = page === 'Quản trị hệ thống' && p !== 'Quản trị hệ thống';
+    if (swipe) dashboardMotionFilter();
+    else if (typeof dashboardMotionNavigate === 'function') dashboardMotionNavigate();
+    page = p;
+    if (leavingAdmin) adminLogout();
+    const nav = $('nav');
+    for (const button of nav.querySelectorAll('button')) {
+        const active = button.textContent === p;
+        button.classList.toggle('active', active);
+        if (active) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
+    }
+    const active = nav.querySelector('[aria-current="page"]');
+    if (active && nav.scrollWidth > nav.clientWidth) {
+        const menu = nav.getBoundingClientRect();
+        const item = active.getBoundingClientRect();
+        nav.scrollTo({
+            left: nav.scrollLeft + item.left - menu.left - (nav.clientWidth - item.width) / 2,
+            behavior: dashboardMotionAllowed() ? 'smooth' : 'instant'
+        });
+    }
+    render();
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+}
 function bindMobileMenuSwipe(content) {
     const surface = content.closest('main') || content;
+    const stage = document.createElement('div');
+    stage.className = 'swipe-stage';
+    content.before(stage);
+    stage.append(content);
     let gesture = null;
     let settling = false;
     const translate = x => `translate3d(${x}px, 0, 0)`;
@@ -65,34 +93,51 @@ function bindMobileMenuSwipe(content) {
         return false;
     }
 
+    function showNeighbor(start, next) {
+        if (start.neighbor?.page === next) return;
+        start.neighbor?.element.remove();
+        start.neighbor = null;
+        if (!next) return;
+        const preview = document.createElement('div');
+        preview.className = 'swipe-neighbor';
+        preview.inert = true;
+        preview.setAttribute('aria-hidden', 'true');
+        const exportRows = currentExport;
+        try {
+            const rows = filtered();
+            preview.innerHTML = dashboardPageMarkup(next, rows, stats(rows), true);
+        } finally {
+            currentExport = exportRows;
+        }
+        for (const element of preview.querySelectorAll('[id]')) element.removeAttribute('id');
+        preview.style.top = Math.max(0, -content.getBoundingClientRect().top) + 'px';
+        start.neighbor = { page: next, element: preview };
+        content.parentElement.append(preview);
+    }
+
     async function settle(start, next) {
         const offset = start.offset;
-        if (!animate() || !offset) {
-            content.style.transform = '';
-            if (next && page === start.page) go(next, { swipe: true });
-            return;
-        }
+        const neighbor = start.neighbor?.element;
+        const width = start.width;
         settling = true;
         try {
-            const direction = Math.sign(offset);
-            const exit = next ? direction * Math.max(80, Math.abs(offset)) : 0;
-            const outgoing = content.animate(
-                [{ transform: translate(offset), opacity: 1 }, { transform: translate(exit), opacity: next ? 0.55 : 1 }],
-                { duration: next ? 90 : 170, easing: 'ease-out', fill: 'forwards' }
-            );
-            await outgoing.finished.catch(() => {});
-            content.style.transform = '';
-            outgoing.cancel();
-            if (next && page === start.page) {
-                go(next, { swipe: true });
-                const incoming = content.animate(
-                    [{ transform: translate(-direction * 76), opacity: 0.55 }, { transform: translate(0), opacity: 1 }],
-                    { duration: 220, easing: 'cubic-bezier(.2,.7,.2,1)' }
+            if (animate() && offset) {
+                const end = next ? Math.sign(offset) * width : 0;
+                const origin = offset < 0 ? width : -width;
+                const options = { duration: next ? 230 : 180, easing: 'cubic-bezier(.2,.72,.25,1)', fill: 'forwards' };
+                const slide = (element, from, to) => element.animate(
+                    [{ transform: translate(from) }, { transform: translate(to) }], options
                 );
-                await incoming.finished.catch(() => {});
+                const animations = [slide(content, offset, end)];
+                if (neighbor) animations.push(slide(neighbor, origin + offset, origin + end));
+                await Promise.allSettled(animations.map(animation => animation.finished));
+                for (const animation of animations) animation.cancel();
             }
+            if (next && page === start.page) go(next, { swipe: true });
         } finally {
             content.style.transform = '';
+            neighbor?.remove();
+            content.parentElement.classList.remove('swipe-active');
             settling = false;
         }
     }
@@ -107,7 +152,7 @@ function bindMobileMenuSwipe(content) {
         if (event.touches.length !== 1 || scrollsHorizontally(event.target)) return;
         if (event.target.closest?.('dialog, input[type="range"]') || window.getSelection()?.toString()) return;
         const touch = event.touches[0];
-        gesture = { id: touch.identifier, x: touch.clientX, y: touch.clientY, page, horizontal: false, offset: 0 };
+        gesture = { id: touch.identifier, x: touch.clientX, y: touch.clientY, page, horizontal: false, offset: 0, width: content.clientWidth };
     }, { passive: true });
 
     surface.addEventListener('touchmove', event => {
@@ -131,9 +176,16 @@ function bindMobileMenuSwipe(content) {
         }
         if (event.cancelable) event.preventDefault();
         if (!animate()) return;
-        const distance = adjacent(dx) ? Math.min(160, Math.abs(dx) * 0.8) : Math.min(28, Math.abs(dx) * 0.22);
+        const next = dx ? adjacent(dx) : null;
+        showNeighbor(gesture, next);
+        stage.classList.add('swipe-active');
+        const distance = next ? Math.min(gesture.width, Math.abs(dx)) : Math.min(28, Math.abs(dx) * 0.22);
         gesture.offset = Math.sign(dx) * distance;
         content.style.transform = translate(gesture.offset);
+        if (gesture.neighbor) {
+            const origin = dx < 0 ? gesture.width : -gesture.width;
+            gesture.neighbor.element.style.transform = translate(origin + gesture.offset);
+        }
     }, { passive: false });
 
     surface.addEventListener('touchcancel', () => {
@@ -420,11 +472,7 @@ function renderWithSearchFocus(event) {
     render();
     if(focused&&input.isConnected){input.focus({preventScroll:true});if(selection&&selection[0]!==null)input.setSelectionRange(...selection);}
 }
-function render() {
-    if (typeof chartTipHide === 'function')
-        chartTipHide();
-    let rs = filtered(), s = stats(rs);
-    $('title').textContent = page === 'Tổng quan' ? 'Tổng quan bồi thường' : page;
+function dashboardPageMarkup(page, rs, s, preview = false) {
     let html = '';
     if (page === 'Tổng quan') {
         html = `<div class="kpis">${card('Tổng hồ sơ cần giải quyết', num(rs.length), num(s.old.length) + ' chuyển sang + ' + num(s.f.length) + ' phát sinh')}${card('Đã giải quyết', num(s.g.length), pct(s.g.length, rs.length) + ' tổng cần giải quyết', 'good')}${card('Hồ sơ đang tồn', num(s.t.length), 'Gồm hồ sơ năm nay và năm trước', 'accent')}${card('Tồn 45–90 ngày', num(s.t.filter(r => r['Số ngày tồn'] >= 45 && r['Số ngày tồn'] <= 90).length), 'Trên 90 ngày: ' + s.t.filter(r => r['Số ngày tồn'] > 90).length + ' hồ sơ', 'accent')}</div><div class="grid gdv-pies"><div class="panel"><h2>C\u01A1 c\u1EA5u h\u1ED3 s\u01A1 ph\u00E1t sinh theo G\u0110V</h2><p class="note">H\u1ED3 s\u01A1 ph\u00E1t sinh n\u0103m ${(reportYear())} \u00B7 Theo b\u1ED9 l\u1ECDc \u0111ang ch\u1ECDn</p>${pieGdv(s.f, 'phát sinh')}</div><div class="panel"><h2>C\u01A1 c\u1EA5u h\u1ED3 s\u01A1 t\u1ED3n theo G\u0110V</h2><p class="note">T\u1ED3n l\u0169y k\u1EBF t\u1EA1i ng\u00E0y ${(reportLabel())} \u00B7 Theo b\u1ED9 l\u1ECDc \u0111ang ch\u1ECDn</p>${pieGdv(s.t, 'còn tồn')}</div></div>${businessCharts(filtered(DATA.f), DATA.g)}${agingCharts(s.t)}<div class="grid money-grid"><div class="panel"><h2>Giá trị BT đã giải quyết</h2><div class="money">${money(s.gMoney)}</div><p class="note">TNDS nhập huỷ tính 0; TNDS đã giải quyết lấy tiền trả KH. Hồ sơ khác lấy tiền ước/duyệt BT tại nguồn Đã giải quyết.</p></div><div class="panel"><h2>Ti\u1EC1n \u01B0\u1EDBc b\u1ED3i th\u01B0\u1EDDng c\u00F2n t\u1ED3n</h2><div class="money">${money(s.tMoney)}</div><p class="note">L\u1EA5y Ti\u1EC1n \u01B0\u1EDBc/duy\u1EC7t BT trong ngu\u1ED3n T\u1ED3n. Kh\u00F4ng c\u1ED9ng l\u1EA1i ngu\u1ED3n Ph\u00E1t sinh.</p></div></div>${statusSection(rs)}${historyPanel()}${aiAnalysisPanel()}${qualitySuggestions(rs)}${outlookSection(rs)}`;
@@ -444,13 +492,20 @@ function render() {
     else if (page === 'Tra cứu hồ sơ') {
         html = lookupPage();
     }
-    else if (page === 'Quản trị hệ thống' && adminSessionToken && adminTab==='data') {
+    else if (page === 'Quản trị hệ thống' && !preview && adminSessionToken && adminTab==='data') {
         let f = new Set(DATA.f.map(id)), g = new Set(DATA.g.map(id)), t = new Set(DATA.t.map(id));
         html = emailDataLogPanel() + ptiSyncPanel() + importPanel() + '<div class="banner">Đối soát toàn bộ ba nguồn, không chịu ảnh hưởng bộ lọc. Khóa đối chiếu: Số HSBT đầy đủ.</div><div class="panel"><h2>Quan hệ ba nguồn</h2>' + table(['Nhóm', 'Đã giải quyết', 'Tồn', 'Tổng'], [[`Ph\u00E1t sinh ${(reportYear())}`, [...f].filter(k => g.has(k)).length, [...f].filter(k => t.has(k)).length, f.size], [`Tr\u01B0\u1EDBc ${(reportYear())}`, [...g].filter(k => !f.has(k)).length, [...t].filter(k => !f.has(k)).length, ROWS.filter(r => r._year !== String(reportYear())).length], ['Tổng', g.size, t.size, ROWS.length]].map(r => '<tr>' + r.map(v => '<td>' + esc(num(v) === 'NaN' ? v : num(v)) + '</td>').join('') + '</tr>')) + '<p class="note">✓ Không trùng nội bộ từng nguồn · ✓ Không giao nhau giữa Giải quyết và Tồn · ✓ Phát sinh được phân loại đầy đủ.<br>Ngày mở và số tiền có thể khác giữa nguồn. Phân năm dựa trên sự có mặt trong file Phát sinh; thông tin hồ sơ lấy từ nguồn Giải quyết hoặc Tồn.</p></div>';
         html += `<div class="banner">C\u00F3 th\u1EC3 c\u1EADp nh\u1EADt t\u1EEB Excel tr\u00EAn m\u00E1y ho\u1EB7c th\u01B0 m\u1EE5c Google Drive c\u00F4ng khai. Ch\u1EC9 b\u1ED9 \u0111\u1EA7y \u0111\u1EE7 m\u1EDBi h\u01A1n \u0111\u01B0\u1EE3c k\u00EDch ho\u1EA1t.</div><div class="panel"><h2>B\u1ED9 ngu\u1ED3n ng\u00E0y ${(reportLabel())}</h2>` + table(['Nguồn', 'Số hồ sơ', 'Trạng thái'], [[REPORT_META.sources.f, DATA.f.length], [REPORT_META.sources.g, DATA.g.length], [REPORT_META.sources.t, DATA.t.length]].map(([k, v]) => `<tr><td>${k}</td><td>${num(v)}</td><td><span class="pill">\u0110\u00E3 \u0111\u1ECDc v\u00E0 \u0111\u1ED1i so\u00E1t</span></td></tr>`)) + '<p class="note">Nhận diện theo tiêu đề và ngày bên trong Excel; chỉ cập nhật khi đủ bộ và đối soát hợp lệ.<br>Các khoản tiền ngăn bằng dấu ; được cộng lại, giữ giá trị gốc trong chi tiết hồ sơ.<br>Giữ nguyên 63 trường của nguồn Giải quyết/Tồn, gồm các cột trả gara, tạm ứng và thu hồi để tra cứu chi tiết.<br>Nguồn doanh thu & tỷ lệ bồi thường XO được cập nhật riêng bằng PDF tháng.</p></div>';
     }
-    if(page==='Quản trị hệ thống')html=adminHubPanel(html);
+    if(page==='Quản trị hệ thống')html=adminHubPanel(html, preview);
     if(page==='Giám định viên')html+=healthPanel()+historyPanel()+smallCostPanel();
+    return html;
+}
+function render() {
+    if (typeof chartTipHide === 'function') chartTipHide();
+    const rs = filtered();
+    $('title').textContent = page === 'Tổng quan' ? 'Tổng quan bồi thường' : page;
+    const html = dashboardPageMarkup(page, rs, stats(rs));
     const filters = document.querySelector('.filters');
     if($('content').contains(filters))$('printScope').before(filters);
     $('content').innerHTML = html;
