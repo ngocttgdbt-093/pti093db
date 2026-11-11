@@ -24,14 +24,78 @@ async function historyOpen(options){historyDetailRequest=options;const dialog=$(
 async function historyDetailPage(offset){const request=historyDetailRequest,p=new URLSearchParams({...request,gdv:request.scope||'',offset:String(offset),records:'1'});try{const r=await authFetch('/api/history?'+p),d=await r.json();if(request!==historyDetailRequest)return;if(!r.ok)throw Error(d.errorCode);$('detailBody').innerHTML=`<h2>Hồ sơ ${request.mode==='left'?'ra khỏi nhóm':request.mode==='entered'?'mới vào nhóm':'tại ngày chốt'}</h2><p>${historyDay(d.from)} → ${historyDay(d.date)} · ${num(d.total)} hồ sơ · ${esc(request.scope?PTIGdv.gdvLabel(request.scope):'Tất cả GĐV')}</p><p class="note">Dữ liệu tại kỳ đã chọn; hồ sơ ra nhóm hiển thị tuổi/trạng thái đầu kỳ và lý do đối chiếu ở cuối dòng.</p><div class="history-detail-scroll"><table class="history-detail"><thead><tr><th>Số HSBT</th><th>GĐV</th><th>Gara</th><th>Trạng thái tại kỳ</th><th>Tuổi tồn</th><th>Tiền duyệt/ước</th><th>Kết quả đối chiếu</th></tr></thead><tbody>${d.rows.map(x=>`<tr><td>${esc(x.id)}</td><td>${esc(PTIGdv.gdvLabel(x.gdv))}</td><td>${esc(x.garageLabel)}</td><td>${esc(x.status)}</td><td>${x.age===null?'—':num(x.age)}</td><td>${money(x.estimate)}</td><td>${esc(x.reason)}</td></tr>`).join('')||'<tr><td colspan="7">Không có hồ sơ.</td></tr>'}</tbody></table></div><div class="history-pagination">${offset?`<button onclick="historyDetailPage(${Math.max(0,offset-250)})">Trang trước</button>`:''}<span>${d.total?offset+1:0}–${Math.min(d.total,offset+250)} / ${num(d.total)}</span>${offset+250<d.total?`<button onclick="historyDetailPage(${offset+250})">Trang sau</button>`:''}</div>`}catch(e){if(request===historyDetailRequest)$('detailBody').innerHTML=historyError(e)}}
 let alertHistoryEpoch=0;
 async function loadAlertHistory(){const dialog=$('alertsDialog');if(!dialog.open)return;let body=$('alertHistoryPanel');if(!body){body=document.createElement('section');body.id='alertHistoryPanel';$('alertsGroups').after(body)}const epoch=++alertHistoryEpoch,scope=alertState.gdv;body.innerHTML='<p class="note">Đang đối chiếu diễn biến cảnh báo…</p>';try{const report=await historyFetch(scope,'7','previous','');if(epoch!==alertHistoryEpoch||!dialog.open)return;body.innerHTML='<h3>Diễn biến so với kỳ trước</h3>'+historyCompare(report,true)+'<details><summary>Xem đánh giá diễn biến</summary>'+historyAssessment(report)+'</details>';if(report.comparison)document.querySelectorAll('#alertsGroups .alert-group').forEach((button,i)=>{const group=alertState.model.categories[i],change=report.comparison.changes.find(x=>x.key===group?.key);if(change){const small=button.querySelector('small');if(small&&!small.querySelector('.history-inline-delta')){const span=document.createElement('span');span.className='history-inline-delta';span.textContent=' · '+historyDelta(change.delta)+' so với kỳ trước';small.append(span)}}})}catch(e){if(epoch===alertHistoryEpoch)body.innerHTML=historyError(e)}}
-let backlogHistoryEpoch=0,backlogHistoryState=null,healthMonth='';
+let backlogHistoryEpoch=0,backlogHistoryState=null,healthMonth='',monthlyBacklogMonth='';
 function backlogHistoryPanel(){return `<section class="panel backlog-history-panel"><h2>DIỄN BIẾN HỒ SƠ TỒN THEO NGÀY SỐ LIỆU</h2><p class="note">Theo GĐV đang chọn · Toàn bộ nghiệp vụ · Chỉ hiển thị các ngày có báo cáo thực tế.</p><div id="backlogHistoryBody" aria-live="polite">Đang đọc lịch sử tổng hợp…</div>${healthPanel()}</section>`;}
 async function loadBacklogHistory(){
- if(!$('backlogHistoryBody')&&!$('healthHistoryBody'))return;const epoch=++backlogHistoryEpoch,scope=historyScope();
- try{const r=await authFetch('/api/backlog-history?'+new URLSearchParams({gdv:scope,date:REPORT_META.date,healthScale:'400'}));const d=await r.json();if(!r.ok)throw Error(d.errorCode);if(epoch!==backlogHistoryEpoch||scope!==historyScope()||(!$('backlogHistoryBody')&&!$('healthHistoryBody')))return;backlogHistoryState=d;
+ const hosts=['backlogHistoryBody','healthHistoryBody','monthlyBacklogBody'];
+ if(!hosts.some(id=>$(id)))return;const epoch=++backlogHistoryEpoch,scope=historyScope();
+ try{const r=await authFetch('/api/backlog-history?'+new URLSearchParams({gdv:scope,date:REPORT_META.date,healthScale:'400'}));const d=await r.json();if(!r.ok)throw Error(d.errorCode);if(epoch!==backlogHistoryEpoch||scope!==historyScope()||!hosts.some(id=>$(id)))return;backlogHistoryState=d;
  if($('backlogHistoryBody'))$('backlogHistoryBody').innerHTML=`<div class="backlog-history-charts"><div><h3>Tỷ lệ hồ sơ theo nhóm tuổi</h3>${backlogTrendChart(d.series,true)}</div><div><h3>Tổng số hồ sơ tồn theo ngày</h3>${backlogTrendChart(d.series,false)}</div></div><p class="note">${esc(d.method)}</p>`;
  drawHealthHistory();
- }catch(e){if(epoch===backlogHistoryEpoch){for(const id of ['backlogHistoryBody','healthHistoryBody'])if($(id))$(id).innerHTML=historyError(e);}}
+ drawMonthlyBacklogHistory();
+ }catch(e){if(epoch===backlogHistoryEpoch){for(const id of hosts)if($(id))$(id).innerHTML=historyError(e);}}
+}
+
+function monthlyBacklogPanel(){
+ return `<section class="panel monthly-backlog-panel" aria-labelledby="monthlyBacklogTitle">
+  <div class="health-heading"><h2 id="monthlyBacklogTitle">HỒ SƠ TỒN THEO NGÀY</h2>
+  <label>Tháng theo dõi<select id="monthlyBacklogMonth" aria-label="Tháng hồ sơ tồn" onchange="monthlyBacklogMonth=this.value;drawMonthlyBacklogHistory()"></select></label></div>
+  <div id="monthlyBacklogBody" aria-live="polite">Đang đọc lịch sử hồ sơ tồn…</div>
+ </section>`;
+}
+function drawMonthlyBacklogHistory(){
+ const host=$('monthlyBacklogBody'),select=$('monthlyBacklogMonth');
+ if(!host||!select)return;
+ const series=backlogHistoryState?.series||[];
+ const months=[...new Set(series.map(day=>day.date.slice(0,7)))].sort().reverse();
+ if(!months.includes(monthlyBacklogMonth))monthlyBacklogMonth=months[0]||'';
+ select.disabled=!months.length;
+ select.innerHTML=months.map(month=>`<option value="${month}"${month===monthlyBacklogMonth?' selected':''}>${month.slice(5)}/${month.slice(0,4)}</option>`).join('');
+ if(!months.length){host.innerHTML='<p class="history-empty">Chưa có kỳ báo cáo được lưu.</p>';return;}
+ const label=historyScope()?PTIGdv.gdvLabel(historyScope()):'Toàn đơn vị';
+ const days=series.filter(day=>day.date.startsWith(monthlyBacklogMonth));
+ const unknown=days.reduce((total,day)=>total+day.unknown,0);
+ host.innerHTML=`<p class="health-scope">${esc(label)} · Toàn bộ nghiệp vụ · ${days.length} ngày có số liệu</p>
+  ${monthlyBacklogChart(monthlyBacklogMonth,days)}
+  <p class="note">Số trên cột là tổng hồ sơ tồn. Ngày chưa có báo cáo được để trống.${unknown?' Hồ sơ thiếu tuổi tồn chỉ tính trong tổng và được ghi riêng ở chi tiết từng ngày.':''}</p>`;
+}
+function monthlyBacklogChart(month,days){
+ const [year,monthNumber]=month.split('-').map(Number);
+ const slots=new Date(Date.UTC(year,monthNumber,0)).getUTCDate();
+ const left=48,right=left+slots*36,width=right+16,bottom=222,top=24;
+ const max=Math.max(4,Math.ceil(Math.max(...days.map(day=>day.total))/4)*4);
+ const x=day=>left+(day-.5)*36,y=value=>bottom-value/max*(bottom-top);
+ const groups=[
+  {index:2,label:'Trên 90 ngày',fill:'#d94356',line:'#a92033'},
+  {index:1,label:'45–90 ngày',fill:'#e98627',line:'#a75000',dashed:true},
+  {index:0,label:'Dưới 45 ngày',fill:'#229b73',line:'#126749',dashed:true}
+ ];
+ const columns=[...days].sort((a,b)=>a.date.localeCompare(b.date)).map(entry=>{
+  const day=Number(entry.date.slice(8)),counts=groups.map(group=>entry.counts[group.index]);
+  const levels=[counts[0],counts[0]+counts[1],counts[0]+counts[1]+counts[2]];
+  return {entry,day,counts,levels};
+ });
+ const grid=[0,1,2,3,4].map(tick=>{
+  const value=max*tick/4;
+  return `<line x1="${left}" x2="${right}" y1="${y(value)}" y2="${y(value)}" stroke="#dfe7ec"/><text x="${left-8}" y="${y(value)+4}" text-anchor="end">${num(value)}</text>`;
+ }).join('');
+ const labels=Array.from({length:slots},(_,i)=>`<text x="${x(i+1)}" y="244" text-anchor="middle">${String(i+1).padStart(2,'0')}</text>`).join('');
+ const bars=columns.map(({entry,day,counts,levels})=>{
+  const detail=`${historyDay(entry.date)} · Tổng: ${num(entry.total)} hồ sơ · ${groups.map((group,i)=>group.label+': '+num(counts[i])).join(' · ')}${entry.unknown?' · Thiếu tuổi tồn: '+num(entry.unknown):''}`;
+  const rects=groups.map((group,i)=>`<rect x="${x(day)-10}" y="${y(levels[i])}" width="20" height="${y(levels[i-1]||0)-y(levels[i])}" fill="${group.fill}"/>`).join('');
+  return `<g role="button" tabindex="0" aria-label="${esc(detail)}" onclick="backlogHistoryPoint('${entry.date}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();backlogHistoryPoint('${entry.date}')}">
+   <title>${esc(detail)}</title><rect x="${x(day)-13}" y="${top}" width="26" height="${bottom-top+8}" fill="transparent"/>
+   ${rects}<text x="${x(day)}" y="${y(levels[2])-8}" text-anchor="middle">${num(entry.total)}</text>
+  </g>`;
+ }).join('');
+ const lines=groups.map((group,i)=>{
+  const path=columns.map(({day,levels},j)=>`${columns[j-1]?.day===day-1?'L':'M'}${x(day)},${y(levels[i])}`).join(' ');
+  const dots=columns.map(({day,levels})=>`<circle cx="${x(day)}" cy="${y(levels[i])}" r="2.5" fill="${group.line}"/>`).join('');
+  return `<path d="${path}" fill="none" stroke="${group.line}" stroke-width="2"${group.dashed?' stroke-dasharray="6 4"':''}/>${dots}`;
+ }).join('');
+ return `<div class="history-svg"><svg viewBox="0 0 ${width} 256" style="min-width:${width}px" role="group" aria-label="Cột chồng hồ sơ tồn từng ngày trong tháng">
+  ${grid}${labels}<g class="monthly-backlog-marks">${bars}<g pointer-events="none" aria-hidden="true">${lines}</g></g>
+ </svg></div><div class="history-legend">${groups.map(group=>`<span><i style="background:${group.fill}"></i>${group.label}</span>`).join('')}</div>`;
 }
 function backlogTrendChart(series,percent){
  if(!series.length)return '<p class="history-empty">Chưa có kỳ báo cáo được lưu.</p>';
