@@ -20,7 +20,7 @@ document.addEventListener('click', event => {
 });
 let CLAIM_INDEX;
 let DATA, ROWS = [], page = 'Tổng quan', currentExport = [];
-const pages = ['Tổng quan', 'Giám định viên', 'Phân tích HS tồn', 'Phân tích CP & BT', 'Cải tiến CLDV', 'Tra cứu hồ sơ', 'Dữ liệu', 'Quản trị GĐV'];
+const pages = ['Tổng quan', 'Giám định viên', 'Phân tích HS tồn', 'Phân tích CP & BT', 'Cải tiến CLDV', 'Tra cứu hồ sơ', 'Quản trị hệ thống'];
 const $ = id => document.getElementById(id), esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])), num = v => new Intl.NumberFormat('vi-VN').format(v), money = v => v >= 1e9 ? (v / 1e9).toLocaleString('vi-VN', { maximumFractionDigits: 3 }) + ' tỷ' : v >= 1e6 ? (v / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' tr' : num(v) + ' đ', pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '—', norm = v => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase(), id = r => r['Số HSBT'], sum = (rs, k) => rs.reduce((s, r) => s + (Number(r[k]) || 0), 0), garage = r => r['Tên garage (thường gọi)'] && r['Tên garage (thường gọi)'] !== '-' ? r['Tên garage (thường gọi)'] : r['Tên garage (ĐKKD)'] || 'Chưa có gara';
 function sourceMoney(v) { if (v === null || v === undefined || String(v).trim() === '' || v === '-')
     return 0; if (typeof v === 'number') {
@@ -46,7 +46,7 @@ function prepare(d) { const f = new Set(d.f.map(id)), g = new Set(d.g.map(id)), 
     throw Error('Hồ sơ đồng thời ở nguồn Giải quyết và Tồn'); if ([...f].some(k => !g.has(k) && !t.has(k)))
     throw Error('Hồ sơ phát sinh chưa được phân loại'); return [...d.g.map(r => ({ ...r, _state: 'Đã giải quyết', _year: f.has(id(r)) ? String(reportYear()) : 'Trước ' + reportYear() })), ...d.t.map(r => ({ ...r, _state: 'Tồn', _year: f.has(id(r)) ? String(reportYear()) : 'Trước ' + reportYear() }))]; }
 function filtered(source = ROWS) { let q = norm($('q').value), nv = $('nv').value; return source.filter(r => (!$('gdv').value || r['GĐV thụ lý'] === $('gdv').value) && (!nv || (nv === 'other' ? !/^XO\.[14]/.test(r['Mã nghiệp vụ']) : String(r['Mã nghiệp vụ']).startsWith(nv))) && (!q || norm([id(r), r['Biển số xe'], garage(r), r['GĐV thụ lý']].join(' ')).includes(q))); }
-function go(p) { if(typeof dashboardMotionNavigate==='function')dashboardMotionNavigate(); page = p; document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.textContent === p)); render(); window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }
+function go(p) { if(['Dữ liệu','Quản trị GĐV'].includes(p))p='Quản trị hệ thống'; const leavingAdmin=page==='Quản trị hệ thống'&&p!=='Quản trị hệ thống'; if(typeof dashboardMotionNavigate==='function')dashboardMotionNavigate(); page = p; if(leavingAdmin)adminLogout(); document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.textContent === p)); render(); window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }
 ;
 function resetFilters() { $('gdv').value = ''; $('nv').value = ''; $('q').value = ''; render(); }
 const card = (label, value, note, cls = '') => `<div class="card ${cls}"><small>${label}</small><strong>${value}</strong><em>${note}</em></div>`;
@@ -299,7 +299,7 @@ function exportGarage() { groupTable(filtered(), garageGroupKey); exportCsv(); }
 function exportComparison() { groupTable(filtered(), r => $('dim').value === 'Trạng thái hồ sơ' ? reportStatus(r) : r[$('dim').value] || 'Chưa có'); exportCsv(); }
 function updatePrintScope() {
  const host=$('printScope');if(!host)return;
- if(page==='Dữ liệu'){host.textContent='Phạm vi: Toàn bộ ba nguồn đã đối soát.';return;}
+ if(page==='Quản trị hệ thống'){host.textContent='Phạm vi: Toàn bộ ba nguồn đã đối soát.';return;}
  if(page==='Tra cứu hồ sơ'){
   const q=lookupQuery;
   host.textContent='Phạm vi tra cứu: '+[q.gdv||'Tất cả GĐV',q.plate?'Biển số: '+q.plate:'',q.claim?'Số hồ sơ: '+q.claim:'',q.garage?'Gara: '+q.garage:'',q.statuses.length?'Trạng thái: '+q.statuses.join(', '):'Tất cả trạng thái'].filter(Boolean).join(' · ');return;
@@ -324,11 +324,7 @@ function render() {
         html = `<div class="kpis">${card('Tổng hồ sơ cần giải quyết', num(rs.length), num(s.old.length) + ' chuyển sang + ' + num(s.f.length) + ' phát sinh')}${card('Đã giải quyết', num(s.g.length), pct(s.g.length, rs.length) + ' tổng cần giải quyết', 'good')}${card('Hồ sơ đang tồn', num(s.t.length), 'Gồm hồ sơ năm nay và năm trước', 'accent')}${card('Tồn 45–90 ngày', num(s.t.filter(r => r['Số ngày tồn'] >= 45 && r['Số ngày tồn'] <= 90).length), 'Trên 90 ngày: ' + s.t.filter(r => r['Số ngày tồn'] > 90).length + ' hồ sơ', 'accent')}</div><div class="grid gdv-pies"><div class="panel"><h2>C\u01A1 c\u1EA5u h\u1ED3 s\u01A1 ph\u00E1t sinh theo G\u0110V</h2><p class="note">H\u1ED3 s\u01A1 ph\u00E1t sinh n\u0103m ${(reportYear())} \u00B7 Theo b\u1ED9 l\u1ECDc \u0111ang ch\u1ECDn</p>${pieGdv(s.f, 'phát sinh')}</div><div class="panel"><h2>C\u01A1 c\u1EA5u h\u1ED3 s\u01A1 t\u1ED3n theo G\u0110V</h2><p class="note">T\u1ED3n l\u0169y k\u1EBF t\u1EA1i ng\u00E0y ${(reportLabel())} \u00B7 Theo b\u1ED9 l\u1ECDc \u0111ang ch\u1ECDn</p>${pieGdv(s.t, 'còn tồn')}</div></div>${businessCharts(filtered(DATA.f), DATA.g)}${agingCharts(s.t)}<div class="grid money-grid"><div class="panel"><h2>Giá trị BT đã giải quyết</h2><div class="money">${money(s.gMoney)}</div><p class="note">TNDS nhập huỷ tính 0; TNDS đã giải quyết lấy tiền trả KH. Hồ sơ khác lấy tiền ước/duyệt BT tại nguồn Đã giải quyết.</p></div><div class="panel"><h2>Ti\u1EC1n \u01B0\u1EDBc b\u1ED3i th\u01B0\u1EDDng c\u00F2n t\u1ED3n</h2><div class="money">${money(s.tMoney)}</div><p class="note">L\u1EA5y Ti\u1EC1n \u01B0\u1EDBc/duy\u1EC7t BT trong ngu\u1ED3n T\u1ED3n. Kh\u00F4ng c\u1ED9ng l\u1EA1i ngu\u1ED3n Ph\u00E1t sinh.</p></div></div>${statusSection(rs)}${historyPanel()}${aiAnalysisPanel()}${qualitySuggestions(rs)}${outlookSection(rs)}`;
     }
     else if (page === 'Giám định viên') {
-        html = gdvCharts(rs) + gdvDetailCharts(rs) + healthPanel() + historyPanel()
-            + gdvBacklogTable(rs) + gdvMonthlyTable(filtered(DATA.f), DATA.g)
-            + '<div class="panel gdv-summary"><div class="tablehead"><h2>' + page + '</h2><button onclick="exportCsv()">Xuất CSV</button></div>'
-            + '<p class="note">Hiển thị mã GĐV từ dữ liệu gốc; chưa cấu hình danh mục họ tên.</p>'
-            + groupTable(rs, r => r['GĐV thụ lý']) + '</div>' + smallCostPanel();
+        html = (page === 'Giám định viên' ? gdvBacklogTable(rs) + gdvCharts(rs) + gdvDetailCharts(rs) + gdvMonthlyTable(filtered(DATA.f), DATA.g) : '') + '<div class="panel gdv-summary"><div class="tablehead"><h2>' + page + '</h2><button onclick="exportCsv()">Xuất CSV</button></div><p class="note">' + (page === 'Giám định viên' ? 'Hiển thị mã GĐV từ dữ liệu gốc; chưa cấu hình danh mục họ tên.' : 'Nhóm bằng mã gara; hồ sơ thiếu mã được giữ trong nhóm riêng. Bấm nhóm để xem chi tiết.') + '</p>' + groupTable(rs, page === 'Giám định viên' ? r => r['GĐV thụ lý'] : r => r['Mã garage'] && r['Mã garage'] !== '-' ? r['Mã garage'] + ' · ' + garage(r) : 'Chưa có mã gara') + '</div>';
     }
     else if (page === 'Phân tích HS tồn') {
         html = backlogHistoryPanel() + oldestReport(rs) + oldestReport(rs, 'mid') + '<div class="panel analysis-comparison"><div class="tablehead"><h2>So sánh theo tiêu chí</h2><select id="dim"><option>Hãng xe</option><option>Mã nghiệp vụ</option><option>Trạng thái hồ sơ</option></select><button onclick="exportComparison()">Xuất CSV</button></div><div id="groups"></div></div>';
@@ -342,32 +338,25 @@ function render() {
     else if (page === 'Tra cứu hồ sơ') {
         html = lookupPage();
     }
-    else if (page === 'Dữ liệu') {
+    else if (page === 'Quản trị hệ thống' && adminSessionToken && adminTab==='data') {
         let f = new Set(DATA.f.map(id)), g = new Set(DATA.g.map(id)), t = new Set(DATA.t.map(id));
         html = emailDataLogPanel() + ptiSyncPanel() + importPanel() + '<div class="banner">Đối soát toàn bộ ba nguồn, không chịu ảnh hưởng bộ lọc. Khóa đối chiếu: Số HSBT đầy đủ.</div><div class="panel"><h2>Quan hệ ba nguồn</h2>' + table(['Nhóm', 'Đã giải quyết', 'Tồn', 'Tổng'], [[`Ph\u00E1t sinh ${(reportYear())}`, [...f].filter(k => g.has(k)).length, [...f].filter(k => t.has(k)).length, f.size], [`Tr\u01B0\u1EDBc ${(reportYear())}`, [...g].filter(k => !f.has(k)).length, [...t].filter(k => !f.has(k)).length, ROWS.filter(r => r._year !== String(reportYear())).length], ['Tổng', g.size, t.size, ROWS.length]].map(r => '<tr>' + r.map(v => '<td>' + esc(num(v) === 'NaN' ? v : num(v)) + '</td>').join('') + '</tr>')) + '<p class="note">✓ Không trùng nội bộ từng nguồn · ✓ Không giao nhau giữa Giải quyết và Tồn · ✓ Phát sinh được phân loại đầy đủ.<br>Ngày mở và số tiền có thể khác giữa nguồn. Phân năm dựa trên sự có mặt trong file Phát sinh; thông tin hồ sơ lấy từ nguồn Giải quyết hoặc Tồn.</p></div>';
         html += `<div class="banner">C\u00F3 th\u1EC3 c\u1EADp nh\u1EADt t\u1EEB Excel tr\u00EAn m\u00E1y ho\u1EB7c th\u01B0 m\u1EE5c Google Drive c\u00F4ng khai. Ch\u1EC9 b\u1ED9 \u0111\u1EA7y \u0111\u1EE7 m\u1EDBi h\u01A1n \u0111\u01B0\u1EE3c k\u00EDch ho\u1EA1t.</div><div class="panel"><h2>B\u1ED9 ngu\u1ED3n ng\u00E0y ${(reportLabel())}</h2>` + table(['Nguồn', 'Số hồ sơ', 'Trạng thái'], [[REPORT_META.sources.f, DATA.f.length], [REPORT_META.sources.g, DATA.g.length], [REPORT_META.sources.t, DATA.t.length]].map(([k, v]) => `<tr><td>${k}</td><td>${num(v)}</td><td><span class="pill">\u0110\u00E3 \u0111\u1ECDc v\u00E0 \u0111\u1ED1i so\u00E1t</span></td></tr>`)) + '<p class="note">Nhận diện theo tiêu đề và ngày bên trong Excel; chỉ cập nhật khi đủ bộ và đối soát hợp lệ.<br>Các khoản tiền ngăn bằng dấu ; được cộng lại, giữ giá trị gốc trong chi tiết hồ sơ.<br>Giữ nguyên 63 trường của nguồn Giải quyết/Tồn, gồm các cột trả gara, tạm ứng và thu hồi để tra cứu chi tiết.<br>Nguồn doanh thu & tỷ lệ bồi thường XO được cập nhật riêng bằng PDF tháng.</p></div>';
     }
-    if(page==='Quản trị GĐV')html=mailAdminPanel();
-    // Rescue persistent controls before replacing content from the previous menu.
-    const persistentFilters = document.querySelector('section.filters');
-    if (persistentFilters && $('content').contains(persistentFilters)) $('printScope').before(persistentFilters);
+    if(page==='Quản trị hệ thống')html=adminHubPanel(html);
+    if(page==='Giám định viên')html+=healthPanel()+historyPanel()+smallCostPanel();
+    const filters = document.querySelector('.filters');
+    if($('content').contains(filters))$('printScope').before(filters);
     $('content').innerHTML = html;
-    // Keep PDF-based loss ratios and XO.4 summary above the claim-record filters.
-    // Move the existing filter DOM node only after replacing the content, so navigation cannot destroy it.
-    const recordFilters = document.querySelector('section.filters');
-    const printScopeNode = $('printScope');
-    if (recordFilters && printScopeNode) {
-        if (page === 'Phân tích CP & BT') document.querySelector('.cost-panel').before(recordFilters);
-        else if(recordFilters.nextElementSibling!==printScopeNode)printScopeNode.parentElement.insertBefore(recordFilters, printScopeNode);
-    }
+    if(page === 'Phân tích CP & BT')document.querySelector('.cost-panel').before(filters);
+    else if(filters.nextElementSibling!==$('printScope'))$('printScope').before(filters);
     if(page==='Giám định viên'||page==='Cải tiến CLDV')loadBacklogHistory();
     if(page==='Tổng quan'||page==='Cải tiến CLDV')loadAiAnalysis();
     if(['Tổng quan','Giám định viên','Cải tiến CLDV','Phân tích CP & BT'].includes(page))loadHistoryPanels();
-    if(page==='Quản trị GĐV')loadMailAdmin();
-    if (page === 'Dữ liệu'){loadEmailDataLog();showImportProgress();loadPtiSyncStatus();loadXoReport();}
+    if(page==='Quản trị hệ thống')adminAfterRender();
     if(page === 'Phân tích CP & BT')loadXoReport();
-    document.querySelector('.filters').hidden = ['Tra cứu hồ sơ', 'Dữ liệu', 'Quản trị GĐV'].includes(page);
-    recordFilters.classList.toggle('cost-scope-filter', page === 'Phân tích CP & BT');
+    document.querySelector('.filters').hidden = ['Tra cứu hồ sơ','Quản trị hệ thống'].includes(page);
+    filters.classList.toggle('cost-scope-filter', page === 'Phân tích CP & BT');
     if (page === 'Tra cứu hồ sơ')
         bindLookup();
     if (page === 'Phân tích HS tồn') {
@@ -386,5 +375,6 @@ function setMenuStyle(style) { if (!['classic', 'light', 'ocean'].includes(style
 }
 catch { } }
 setMenuStyle('ocean');
-loadCurrentDataset().then(d => { setDataset(d); $('nav').innerHTML = pages.map(p => `<button onclick="go('${p}')">${p}</button>`).join(''); $('gdv').innerHTML = '<option value="">Tất cả GĐV</option>' + [...new Set(ROWS.map(r => r['GĐV thụ lý']))].sort().map(v => `<option>${esc(v)}</option>`).join(''); ['gdv', 'nv'].forEach(k => $(k).onchange = render); $('q').addEventListener('input',renderWithSearchFocus);$('q').addEventListener('compositionend',renderWithSearchFocus); go(page); initRobo(); loadPtiSyncStatus(); startDatasetSyncWatch(); document.body.removeAttribute('data-auth-pending'); }).catch(e => { $('content').textContent = 'Không thể mở bộ dữ liệu: ' + e.message; if(sessionStorage.getItem('pti093_auth'))document.body.removeAttribute('data-auth-pending'); });
+loadCurrentDataset().then(d => { setDataset(d); $('nav').innerHTML = pages.map(p => `<button onclick="go('${p}')">${p}</button>`).join(''); $('gdv').innerHTML = '<option value="">Tất cả GĐV</option>' + [...new Set(ROWS.map(r => r['GĐV thụ lý']))].sort().map(v => `<option>${esc(v)}</option>`).join(''); ['gdv', 'nv'].forEach(k => $(k).onchange = render); $('q').addEventListener('input',renderWithSearchFocus);$('q').addEventListener('compositionend',renderWithSearchFocus); go(page); initRobo(); loadVisitCount(); loadPtiSyncStatus(); startDatasetSyncWatch(); document.body.removeAttribute('data-auth-pending'); }).catch(e => { $('content').textContent = 'Không thể mở bộ dữ liệu: ' + e.message; if(sessionStorage.getItem('pti093_auth'))document.body.removeAttribute('data-auth-pending'); });
 
+async function loadVisitCount(){const host=document.getElementById('visitCount');if(!host)return;try{const response=await authFetch('/api/visits',{method:'POST'}),result=await response.json();if(!response.ok)throw Error();host.textContent='Lượt truy cập: '+num(result.total);}catch{host.textContent='Lượt truy cập: chưa tải được';}}
