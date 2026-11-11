@@ -18,3 +18,7 @@ Before changing a cross-file feature, investigating a bug that spans modules, re
 For repetitive daily work, apply this lookup automatically when the task involves source dependencies. Reports, spreadsheet totals and claims data must be verified against their authorized data sources. Graphify is not evidence of business data correctness or a store of all conversations. These repository instructions guide agents that load them; they do not create a connection to unrelated ChatGPT sessions.
 
 Use the existing GitHub App and authorized Drive connection for reads. Request only the access actually needed; never place tokens or private keys in source, reports or chat. Let the approved scheduled backup process publish persistent Graphify snapshots. Test code changes on a separate branch and obtain the task's required merge/deployment approval.
+
+## Bàn giao quy ước ngày 11/11/2026
+
+Đọc [Quy ước vận hành Dashboard 093](docs/quy-uoc-van-hanh-2026-11-11.md) khi tiếp tục công việc hoặc cập nhật Graphify. Kiểm tra tài liệu và các mô-đun liên quan có thực sự nằm trong đầu vào và xuất hiện trong sơ đồ mới. Xác minh artifact theo commit và bản sao Drive trước khi báo đã cập nhật Graphify.
