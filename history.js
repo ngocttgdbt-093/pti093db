@@ -67,7 +67,7 @@ function monthlyBacklogChart(month,days){
  const x=day=>left+(day-.5)*36,y=value=>bottom-value/max*(bottom-top);
  const groups=[
   {index:2,label:'Trên 90 ngày',fill:'#d94356',light:'#ff9298',line:'#a92033'},
-  {index:1,label:'45–90 ngày',fill:'#e98627',light:'#ffb472',line:'#a75000',dashed:true},
+  {index:1,label:'45–90 ngày',fill:'#e98627',light:'#ffb472'},
   {index:0,label:'Dưới 45 ngày',fill:'#229b73',light:'#80d6b6',line:'#126749',dashed:true}
  ];
  const columns=[...days].sort((a,b)=>a.date.localeCompare(b.date)).map(entry=>{
@@ -89,6 +89,7 @@ function monthlyBacklogChart(month,days){
   </g>`;
  }).join('');
  const lines=groups.map((group,i)=>{
+  if(!group.line)return '';
   const path=columns.map(({day,levels},j)=>`${columns[j-1]?.day===day-1?'L':'M'}${x(day)},${y(levels[i])}`).join(' ');
   const dots=columns.map(({day,levels})=>`<circle cx="${x(day)}" cy="${y(levels[i])}" r="2.5" fill="${group.line}"/>`).join('');
   return `<path d="${path}" fill="none" stroke="${group.line}" stroke-width="2"${group.dashed?' stroke-dasharray="6 4"':''}/>${dots}`;
