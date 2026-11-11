@@ -1,8 +1,7 @@
 // Animate only navigation and its asynchronous chart loads; filtering stays immediate.
 let dashboardMotionNavigation=false,dashboardMotionObserver=null,dashboardPrinting=false;
 const dashboardMotionSeen=new WeakSet(),dashboardMotionJobs=new Set();
-const dashboardReducedMotion=typeof matchMedia==='function'?matchMedia('(prefers-reduced-motion: reduce)'):null;
-function dashboardMotionAllowed(){return !dashboardPrinting&&!dashboardReducedMotion?.matches;}
+function dashboardMotionAllowed(){return !dashboardPrinting;}
 function dashboardMotionFinish(){for(const job of [...dashboardMotionJobs])job.finish();}
 function dashboardMotionFilter(){dashboardMotionNavigation=false;dashboardMotionFinish();}
 function dashboardMotionNavigate(){dashboardMotionFinish();dashboardMotionNavigation=true;}
@@ -72,6 +71,3 @@ document.addEventListener('input',e=>{if(e.target.closest('.filters,.history-fil
 document.addEventListener('change',e=>{if(e.target.closest('.filters,.history-filters,.health-heading,.history-cost-controls')||e.target.id==='dim')dashboardMotionFilter();},true);
 window.addEventListener('beforeprint',()=>{dashboardPrinting=true;dashboardMotionFinish();});
 window.addEventListener('afterprint',()=>{dashboardPrinting=false;});
-dashboardReducedMotion?.addEventListener?.('change',()=>{if(dashboardReducedMotion.matches)dashboardMotionFilter();});
-
-document.body.dataset.dashboardMotion='on';
