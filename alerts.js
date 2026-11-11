@@ -55,7 +55,7 @@ function refreshAlerts() {
  const gdvs=[...new Set(ROWS.map(r=>r['GĐV thụ lý']))].sort();
  if(alertState.gdv&&!gdvs.includes(alertState.gdv))alertState.gdv='';
  select.innerHTML='<option value="">Tất cả GĐV</option>'+gdvs.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('');select.value=alertState.gdv;
- select.onchange=()=>{alertState.gdv=select.value;try{sessionStorage.setItem('093_alert_gdv',select.value)}catch{}refreshAlerts();};
+ select.onchange=()=>{alertState.gdv=select.value;try{sessionStorage.setItem('093_alert_gdv',select.value)}catch{}refreshAlerts();if(page==='Giám định viên')setMonthlyBacklogGdv(select.value);};
  const model=alertModel(DATA,REPORT_META.date,alertState.gdv);alertState.model=model;
  const badge=$('alertBadge'),button=$('alertBell'),unread=model.categories.length>0&&alertState.seen[model.gdv]!==alertSignature(model);
  badge.textContent=model.categories.length;badge.hidden=!model.categories.length;
