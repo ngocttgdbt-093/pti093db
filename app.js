@@ -48,6 +48,49 @@ function prepare(d) { const f = new Set(d.f.map(id)), g = new Set(d.g.map(id)), 
 function filtered(source = ROWS) { let q = norm($('q').value), nv = $('nv').value; return source.filter(r => (!$('gdv').value || r['GĐV thụ lý'] === $('gdv').value) && (!nv || (nv === 'other' ? !/^XO\.[14]/.test(r['Mã nghiệp vụ']) : String(r['Mã nghiệp vụ']).startsWith(nv))) && (!q || norm([id(r), r['Biển số xe'], garage(r), r['GĐV thụ lý']].join(' ')).includes(q))); }
 function go(p) { if(['Dữ liệu','Quản trị GĐV'].includes(p))p='Quản trị hệ thống'; const leavingAdmin=page==='Quản trị hệ thống'&&p!=='Quản trị hệ thống'; if(typeof dashboardMotionNavigate==='function')dashboardMotionNavigate(); page = p; if(leavingAdmin)adminLogout(); document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.textContent === p)); render(); window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }
 ;
+function bindMobileMenuSwipe(content) {
+    let gesture = null;
+    const reserved = 'a, button, input, select, textarea, label, summary, dialog, table, canvas, svg, [role="button"], [contenteditable="true"]';
+    function allowsSwipe(target) {
+        if (!target.closest || target.closest(reserved)) return false;
+        for (let node = target; node && node !== content; node = node.parentElement) {
+            if (node.scrollWidth > node.clientWidth + 2 && /auto|scroll/.test(getComputedStyle(node).overflowX)) return false;
+        }
+        return !window.getSelection()?.toString();
+    }
+    content.addEventListener('touchstart', event => {
+        gesture = null;
+        if (event.touches.length !== 1 || !allowsSwipe(event.target)) return;
+        const touch = event.touches[0];
+        // Leave the edges free for the browser's back and forward gestures.
+        if (touch.clientX < 24 || touch.clientX > window.innerWidth - 24) return;
+        gesture = { id: touch.identifier, x: touch.clientX, y: touch.clientY, page, started: performance.now() };
+    }, { passive: true });
+    content.addEventListener('touchmove', event => {
+        if (!gesture) return;
+        const touch = event.touches[0];
+        if (event.touches.length !== 1 || touch.identifier !== gesture.id) {
+            gesture = null;
+            return;
+        }
+        const dx = Math.abs(touch.clientX - gesture.x);
+        const dy = Math.abs(touch.clientY - gesture.y);
+        if (dy > 24 && dy > dx) gesture = null;
+    }, { passive: true });
+    content.addEventListener('touchcancel', () => { gesture = null; }, { passive: true });
+    content.addEventListener('touchend', event => {
+        const start = gesture;
+        gesture = null;
+        if (!start || start.page !== page || event.touches.length || performance.now() - start.started > 800) return;
+        const touch = [...event.changedTouches].find(item => item.identifier === start.id);
+        if (!touch) return;
+        const dx = touch.clientX - start.x;
+        const dy = touch.clientY - start.y;
+        if (Math.abs(dx) < 65 || Math.abs(dx) < Math.abs(dy) * 1.7) return;
+        const next = pages[pages.indexOf(page) + (dx < 0 ? 1 : -1)];
+        if (next) go(next);
+    }, { passive: true });
+}
 function resetFilters() { $('gdv').value = ''; $('nv').value = ''; $('q').value = ''; render(); }
 const card = (label, value, note, cls = '') => `<div class="card ${cls}"><small>${label}</small><strong>${value}</strong><em>${note}</em></div>`;
 function stats(rs) { let g = rs.filter(r => r._state === 'Đã giải quyết'), t = rs.filter(r => r._state === 'Tồn'); return { g, t, f: rs.filter(r => r._year === String(reportYear())), old: rs.filter(r => r._year !== String(reportYear())), gMoney: g.reduce((n,r)=>n+reportAmount(r),0), tMoney: t.reduce((n,r)=>n+reportAmount(r),0) }; }
@@ -375,6 +418,6 @@ function setMenuStyle(style) { if (!['classic', 'light', 'ocean'].includes(style
 }
 catch { } }
 setMenuStyle('ocean');
-loadCurrentDataset().then(d => { setDataset(d); $('nav').innerHTML = pages.map(p => `<button onclick="go('${p}')">${p}</button>`).join(''); $('gdv').innerHTML = '<option value="">Tất cả GĐV</option>' + [...new Set(ROWS.map(r => r['GĐV thụ lý']))].sort().map(v => `<option>${esc(v)}</option>`).join(''); ['gdv', 'nv'].forEach(k => $(k).onchange = render); $('q').addEventListener('input',renderWithSearchFocus);$('q').addEventListener('compositionend',renderWithSearchFocus); go(page); initRobo(); loadVisitCount(); loadPtiSyncStatus(); startDatasetSyncWatch(); document.body.removeAttribute('data-auth-pending'); }).catch(e => { $('content').textContent = 'Không thể mở bộ dữ liệu: ' + e.message; if(sessionStorage.getItem('pti093_auth'))document.body.removeAttribute('data-auth-pending'); });
+loadCurrentDataset().then(d => { setDataset(d); $('nav').innerHTML = pages.map(p => `<button onclick="go('${p}')">${p}</button>`).join(''); $('gdv').innerHTML = '<option value="">Tất cả GĐV</option>' + [...new Set(ROWS.map(r => r['GĐV thụ lý']))].sort().map(v => `<option>${esc(v)}</option>`).join(''); ['gdv', 'nv'].forEach(k => $(k).onchange = render); $('q').addEventListener('input',renderWithSearchFocus);$('q').addEventListener('compositionend',renderWithSearchFocus); go(page); bindMobileMenuSwipe($('content')); initRobo(); loadVisitCount(); loadPtiSyncStatus(); startDatasetSyncWatch(); document.body.removeAttribute('data-auth-pending'); }).catch(e => { $('content').textContent = 'Không thể mở bộ dữ liệu: ' + e.message; if(sessionStorage.getItem('pti093_auth'))document.body.removeAttribute('data-auth-pending'); });
 
 async function loadVisitCount(){const host=document.getElementById('visitCount');if(!host)return;try{const response=await authFetch('/api/visits',{method:'POST'}),result=await response.json();if(!response.ok)throw Error();host.textContent='Lượt truy cập: '+num(result.total);}catch{host.textContent='Lượt truy cập: chưa tải được';}}
