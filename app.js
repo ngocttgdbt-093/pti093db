@@ -53,36 +53,50 @@ function go(p, { swipe = false } = {}) {
     else if (typeof dashboardMotionNavigate === 'function') dashboardMotionNavigate();
     page = p;
     if (leavingAdmin) adminLogout();
-    const nav = $('nav');
-    for (const button of nav.querySelectorAll('button')) {
-        const active = button.textContent === p;
+    selectDashboardMenu(p);
+    centerDashboardMenu(dashboardMotionAllowed() ? 'smooth' : 'instant');
+    render();
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+}
+function selectDashboardMenu(selected) {
+    for (const button of $('nav').querySelectorAll('button')) {
+        const active = button.textContent === selected;
         button.classList.toggle('active', active);
         if (active) button.setAttribute('aria-current', 'page');
         else button.removeAttribute('aria-current');
     }
-    const active = nav.querySelector('[aria-current="page"]');
-    if (active && nav.scrollWidth > nav.clientWidth) {
-        const menu = nav.getBoundingClientRect();
-        const item = active.getBoundingClientRect();
-        nav.scrollTo({
-            left: nav.scrollLeft + item.left - menu.left - (nav.clientWidth - item.width) / 2,
-            behavior: dashboardMotionAllowed() ? 'smooth' : 'instant'
-        });
-    }
-    render();
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 }
+function dashboardMenuCenter(nav, button) {
+    const menu = nav.getBoundingClientRect();
+    const item = button.getBoundingClientRect();
+    return nav.scrollLeft + item.left - menu.left - (nav.clientWidth - item.width) / 2;
+}
+function centerDashboardMenu(behavior = 'instant') {
+    const nav = $('nav');
+    const active = nav.querySelector('[aria-current="page"]');
+    if (!active || !window.matchMedia('(max-width: 760px)').matches) return;
+    const first = nav.firstElementChild;
+    const last = nav.lastElementChild;
+    const gap = parseFloat(getComputedStyle(nav).columnGap) || 0;
+    const spacer = item => Math.max(0, (nav.clientWidth - item.offsetWidth) / 2 - gap) + 'px';
+    nav.style.setProperty('--menu-leading-space', spacer(first));
+    nav.style.setProperty('--menu-trailing-space', spacer(last));
+    nav.scrollTo({ left: dashboardMenuCenter(nav, active), behavior });
+}
+
 function bindMobileMenuSwipe(content) {
     const surface = content.closest('main') || content;
+    const mobile = window.matchMedia('(max-width: 760px)');
     const stage = document.createElement('div');
     stage.className = 'swipe-stage';
-    content.before(stage);
-    stage.append(content);
+    surface.before(stage);
+    stage.append(surface);
+    window.addEventListener('resize', () => centerDashboardMenu());
     let gesture = null;
     let settling = false;
     const translate = x => `translate3d(${x}px, 0, 0)`;
     const adjacent = dx => pages[pages.indexOf(page) + (dx < 0 ? 1 : -1)];
-    const animate = () => typeof content.animate === 'function' && dashboardMotionAllowed();
+    const animate = () => typeof surface.animate === 'function' && dashboardMotionAllowed();
 
     function scrollsHorizontally(target) {
         for (let node = target; node && node !== surface; node = node.parentElement) {
@@ -98,21 +112,40 @@ function bindMobileMenuSwipe(content) {
         start.neighbor?.element.remove();
         start.neighbor = null;
         if (!next) return;
-        const preview = document.createElement('div');
-        preview.className = 'swipe-neighbor';
+        const preview = surface.cloneNode(false);
+        preview.classList.add('swipe-neighbor');
         preview.inert = true;
         preview.setAttribute('aria-hidden', 'true');
+        const contentCopy = content.cloneNode(false);
+        const liveFilters = surface.querySelector('.filters');
+        const filterCopy = liveFilters.cloneNode(true);
+        const liveControls = liveFilters.querySelectorAll('select, input');
+        filterCopy.querySelectorAll('select, input').forEach((control, index) => {
+            control.value = liveControls[index].value;
+        });
+        filterCopy.hidden = ['Tra cứu hồ sơ', 'Quản trị hệ thống'].includes(next);
+        filterCopy.classList.toggle('cost-scope-filter', next === 'Phân tích CP & BT');
+        for (const child of surface.children) {
+            if (child === content) preview.append(contentCopy);
+            else if (child === liveFilters) continue;
+            else {
+                if (child.id === 'printScope' && next !== 'Phân tích CP & BT') preview.append(filterCopy);
+                preview.append(child.cloneNode(true));
+            }
+        }
+        preview.querySelector('#title').textContent = next === 'Tổng quan' ? 'Tổng quan bồi thường' : next;
         const exportRows = currentExport;
         try {
             const rows = filtered();
-            preview.innerHTML = dashboardPageMarkup(next, rows, stats(rows), true);
+            contentCopy.innerHTML = dashboardPageMarkup(next, rows, stats(rows), true);
+            if (next === 'Phân tích CP & BT') contentCopy.querySelector('.cost-panel')?.before(filterCopy);
         } finally {
             currentExport = exportRows;
         }
         for (const element of preview.querySelectorAll('[id]')) element.removeAttribute('id');
-        preview.style.top = Math.max(0, -content.getBoundingClientRect().top) + 'px';
+        preview.style.top = start.top + 'px';
         start.neighbor = { page: next, element: preview };
-        content.parentElement.append(preview);
+        stage.append(preview);
     }
 
     async function settle(start, next) {
@@ -121,6 +154,10 @@ function bindMobileMenuSwipe(content) {
         const width = start.width;
         settling = true;
         try {
+            if (page === start.page && start.horizontal) {
+                selectDashboardMenu(next || page);
+                centerDashboardMenu(animate() ? 'smooth' : 'instant');
+            }
             if (animate() && offset) {
                 const end = next ? Math.sign(offset) * width : 0;
                 const origin = offset < 0 ? width : -width;
@@ -128,22 +165,23 @@ function bindMobileMenuSwipe(content) {
                 const slide = (element, from, to) => element.animate(
                     [{ transform: translate(from) }, { transform: translate(to) }], options
                 );
-                const animations = [slide(content, offset, end)];
+                const animations = [slide(surface, offset, end)];
                 if (neighbor) animations.push(slide(neighbor, origin + offset, origin + end));
                 await Promise.allSettled(animations.map(animation => animation.finished));
                 for (const animation of animations) animation.cancel();
             }
             if (next && page === start.page) go(next, { swipe: true });
         } finally {
-            content.style.transform = '';
+            surface.style.transform = '';
             neighbor?.remove();
-            content.parentElement.classList.remove('swipe-active');
+            stage.classList.remove('swipe-active');
+            stage.style.minHeight = '';
             settling = false;
         }
     }
 
     surface.addEventListener('touchstart', event => {
-        if (settling) return;
+        if (settling || !mobile.matches) return;
         if (gesture) {
             const start = gesture;
             gesture = null;
@@ -152,7 +190,14 @@ function bindMobileMenuSwipe(content) {
         if (event.touches.length !== 1 || scrollsHorizontally(event.target)) return;
         if (event.target.closest?.('dialog, input[type="range"]') || window.getSelection()?.toString()) return;
         const touch = event.touches[0];
-        gesture = { id: touch.identifier, x: touch.clientX, y: touch.clientY, page, horizontal: false, offset: 0, width: content.clientWidth };
+        const bounds = surface.getBoundingClientRect();
+        const nav = $('nav');
+        const menuPositions = new Map(Array.from(nav.querySelectorAll('button'), button =>
+            [button.textContent, dashboardMenuCenter(nav, button)]));
+        gesture = {
+            id: touch.identifier, x: touch.clientX, y: touch.clientY, page,
+            horizontal: false, offset: 0, width: bounds.width, top: Math.max(0, -bounds.top), nav, menuPositions
+        };
     }, { passive: true });
 
     surface.addEventListener('touchmove', event => {
@@ -178,13 +223,22 @@ function bindMobileMenuSwipe(content) {
         if (!animate()) return;
         const next = dx ? adjacent(dx) : null;
         showNeighbor(gesture, next);
-        stage.classList.add('swipe-active');
+        if (!stage.classList.contains('swipe-active')) {
+            stage.style.minHeight = (window.innerHeight + gesture.top) + 'px';
+            stage.classList.add('swipe-active');
+        }
         const distance = next ? Math.min(gesture.width, Math.abs(dx)) : Math.min(28, Math.abs(dx) * 0.22);
         gesture.offset = Math.sign(dx) * distance;
-        content.style.transform = translate(gesture.offset);
+        surface.style.transform = translate(gesture.offset);
         if (gesture.neighbor) {
             const origin = dx < 0 ? gesture.width : -gesture.width;
             gesture.neighbor.element.style.transform = translate(origin + gesture.offset);
+        }
+        const from = gesture.menuPositions.get(gesture.page);
+        const to = gesture.menuPositions.get(next);
+        if (Number.isFinite(from)) {
+            const progress = distance / gesture.width;
+            gesture.nav.scrollLeft = Number.isFinite(to) ? from + (to - from) * progress : from;
         }
     }, { passive: false });
 
@@ -202,7 +256,7 @@ function bindMobileMenuSwipe(content) {
         const dx = touch ? touch.clientX - start.x : 0;
         const dy = touch ? touch.clientY - start.y : 0;
         const next = start.horizontal && !event.touches.length && start.page === page &&
-            Math.abs(dx) >= 54 && Math.abs(dx) >= Math.abs(dy) * 1.25 ? adjacent(dx) : null;
+            Math.abs(dx) > start.width / 2 && Math.abs(dx) >= Math.abs(dy) * 1.25 ? adjacent(dx) : null;
         void settle(start, next);
     }, { passive: true });
 }
