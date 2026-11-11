@@ -32,9 +32,7 @@ button:disabled{cursor:default;box-shadow:none;opacity:.65}
 @media screen and (max-width:1100px){main{padding:20px}main>header{align-items:flex-start;flex-wrap:wrap}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.header-actions{max-width:100%}}
 @media screen and (max-width:760px){body[data-menu-style]>aside{position:static;inset:auto;width:auto;height:auto;margin:10px 10px 0;padding:12px;border-radius:20px;overflow:visible}.brand{padding:0 8px 8px}.brand-row{justify-content:flex-start}.brand-row img{width:48px;height:auto}.brand b{font-size:34px}.brand small,.asidefoot{display:none}body[data-menu-style]>aside nav{display:flex;gap:5px;overflow-x:auto;padding-bottom:3px;scrollbar-width:thin}body[data-menu-style] nav button{width:auto;flex:0 0 auto;white-space:nowrap;margin:0;padding:10px 13px;border-left:0;border-bottom:3px solid transparent}body[data-menu-style] nav button.active{border-bottom-color:#f4bc5d}main{margin-left:0;padding:12px}main>header{padding:16px;border-radius:18px}.filters{padding:13px;gap:12px}.filters label{flex:1 1 140px}.filters label:has(input){flex-basis:100%;min-width:0}.grid{gap:14px}.card,.panel{padding:16px;border-radius:17px}.card strong{font-size:26px}.history-heading{border-radius:16px 16px 0 0}.header-actions{width:100%;justify-content:flex-start}.header-actions>button{font-size:11px;padding:9px}.source{font-size:11px;padding:12px}.source #datasetUpdateText{display:inline}.health-panel{margin:15px 0}.health-scope b{font-size:20px}}
 @media screen and (max-width:420px){h1{font-size:23px}.kpis{gap:11px}.card{padding:14px}.card small{font-size:11px}.card em{font-size:10px}.card strong{font-size:24px;margin:10px 0}.header-actions{gap:7px}.header-actions>button{padding:8px}}
-/* Stop decorative motion without changing SVG data geometry or visibility. */
-body[data-dashboard-motion="off"] *,body[data-dashboard-motion="off"] *::before,body[data-dashboard-motion="off"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
-@media(prefers-reduced-motion:reduce){:where(body:not([data-dashboard-motion="on"])) *,:where(body:not([data-dashboard-motion="on"])) *::before,:where(body:not([data-dashboard-motion="on"])) *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}:where(body:not([data-dashboard-motion="on"])) .card:hover{transform:none!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.card:hover{transform:none!important}}
 @media print{*,*::before,*::after{animation:none!important;transition:none!important}.card,.panel,.health-panel,.backlog-history-panel{box-shadow:none!important;backdrop-filter:none!important}.card:hover{transform:none!important}}
 
 .mail-table{overflow-x:auto}.mail-table input:not([type=checkbox]){min-width:145px;width:100%}.mail-table table{min-width:760px}.mail-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:18px 0}.mail-preview{width:min(95vw,850px);height:90vh}.mail-preview iframe{width:100%;height:calc(100% - 50px);border:0}@media print{#mailAdmin,.mail-preview{display:none!important}}
@@ -58,3 +56,42 @@ body[data-dashboard-motion="off"] *,body[data-dashboard-motion="off"] *::before,
 #mailAdmin td:first-child{width:15%}
 #mailAdmin input[type=checkbox]{appearance:auto;inline-size:16px;block-size:16px;min-width:0;min-height:0;padding:0;margin:0;vertical-align:middle;accent-color:#246d87}
 #mailAdmin .mail-save{justify-content:flex-end}
+
+@media screen and (max-width: 760px) {
+  main > header {
+    padding: 10px 12px;
+    gap: 7px;
+    margin-bottom: 12px;
+  }
+  main > header h1 { margin: 3px 0 0; line-height: 1.2; }
+  main > header .header-actions {
+    align-items: flex-end;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  main > header .header-actions > button {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 6px 8px;
+  }
+  main > header .alert-tools {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-left: 0;
+  }
+  main > header .alert-picker { min-width: 0; width: min(100%, 148px); }
+  main > header .alert-picker select {
+    min-width: 0;
+    width: 100%;
+    height: 34px;
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+  main > header .alert-bell {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+  }
+}
