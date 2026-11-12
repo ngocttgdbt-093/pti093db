@@ -48,7 +48,7 @@ function adminDocumentPanel(){
  <div class="admin-upload-grid"><label>Tệp tài liệu<input type="file" id="adminContentFile" onchange="adminInvalidatePreview()" accept=".pdf,.docx,.xlsx,.txt,.md" multiple required><small>PDF, Word .docx, Excel .xlsx, TXT, Markdown · Tối đa 20 MB mỗi tệp</small></label>
  <label>Mô tả chung cho các tệp (không bắt buộc)<textarea id="adminContentDescription" oninput="adminInvalidatePreview()" maxlength="4000" rows="5" placeholder="Có thể ghi nhóm tài liệu hoặc nội dung cần ưu tiên tra cứu.">${esc(state?.description||'')}</textarea></label></div>
  <div class="admin-upload-actions"><button class="import-primary" id="adminDocumentPreviewButton">Đọc tệp & xem trước</button><button type="button" class="import-primary" id="adminDocumentUploadButton" onclick="adminPublishDocuments()" disabled>Tải lên</button></div>
- <p class="note">Kiểm tra kết quả xem trước. Nút Tải lên sẽ bật khi có tệp đạt.</p></form>
+ <p class="note">PDF scan được tự nhận dạng chữ tiếng Việt. Kiểm tra kết quả trước khi tải lên.</p></form>
  <div id="adminDocumentProgress" class="admin-document-progress">${adminDocumentProgress(state)}</div>
  <p id="adminDocumentStatus" role="status"></p><div id="adminContentPreview"></div></section>
  <section class="panel"><h2>Lịch sử cập nhật tài liệu</h2><div id="adminContentStatus" aria-live="polite">Đang đọc thông tin…</div></section>`;
@@ -76,10 +76,17 @@ async function adminPreviewDocuments(){
    if(file.size>20*1048576)throw Error('Tệp vượt giới hạn 20 MB.');
    if(!/\.(pdf|docx|xlsx|txt|md)$/i.test(file.name))throw Error('Định dạng tệp chưa được hỗ trợ.');
    if(/\.pdf$/i.test(file.name)){
-    entry.pdfText=await adminPdfText(file);
-    if(!entry.pdfText.trim())throw Error('PDF chưa có lớp văn bản. Hãy nhận dạng chữ (OCR) rồi chọn lại tệp.');
+    const {readDocumentPdf}=await import('./document-pdf.mjs?v=20261112-ocr');
+    const result=await readDocumentPdf(file,(page,total)=>{
+     state.status=`Đang OCR tiếng Việt: ${file.name} · trang ${page}/${total}`;
+     const status=document.getElementById('adminDocumentStatus');
+     if(epoch===adminEpoch&&status)status.textContent=state.status;
+    },()=>epoch===adminEpoch);
+    entry.pdfText=result.text;
+    entry.ocrPages=result.ocrPages;
+    entry.ocrSample=result.ocrSample;
    }
-  }catch(e){entry.readError=e.message;}
+  }catch(e){entry.readError=e?.message||String(e||'Không đọc được tệp.');}
   if(epoch!==adminEpoch)return;
   entry.read=true;
   drawAdminDocuments();
@@ -120,7 +127,7 @@ function drawAdminDocuments(){
  document.getElementById('adminContentPreview').innerHTML=files.map(f=>{
   const error=f.readError||f.analysisError||f.uploadError;
   const result=f.published?'<p class="import-success">Đã tải lên</p>':f.preview?adminPreviewMarkup(f.preview,false):'';
-  return `<article class="admin-document-result"><h3>${esc(f.file.name)}</h3>${error?`<p class="import-error">${esc(error)}</p>`:''}${result}</article>`;
+  return `<article class="admin-document-result"><h3>${esc(f.file.name)}</h3>${error?`<p class="import-error">${esc(error)}</p>`:''}${f.ocrPages?`<details><summary>Văn bản mẫu từ OCR · ${f.ocrPages} trang nhận dạng được</summary><p style="white-space:pre-wrap">${esc(f.ocrSample)}</p></details>`:''}${result}</article>`;
  }).join('');
 }
 async function adminPublishDocuments(){
