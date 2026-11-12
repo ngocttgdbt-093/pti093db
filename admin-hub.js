@@ -126,8 +126,9 @@ function drawAdminDocuments(){
  document.getElementById('adminContentDescription').disabled=busy;
  document.getElementById('adminContentPreview').innerHTML=files.map(f=>{
   const error=f.readError||f.analysisError||f.uploadError;
+  const errorLabel=f.readError?'Lỗi đọc tệp':f.analysisError?'Lỗi phân tích':'Lỗi tải lên';
   const result=f.published?'<p class="import-success">Đã tải lên</p>':f.preview?adminPreviewMarkup(f.preview,false):'';
-  return `<article class="admin-document-result"><h3>${esc(f.file.name)}</h3>${error?`<p class="import-error">${esc(error)}</p>`:''}${f.ocrPages?`<details><summary>Văn bản mẫu từ OCR · ${f.ocrPages} trang nhận dạng được</summary><p style="white-space:pre-wrap">${esc(f.ocrSample)}</p></details>`:''}${result}</article>`;
+  return `<article class="admin-document-result${error?' admin-document-failed':''}"><h3>${esc(f.file.name)}</h3>${error?`<details class="admin-document-error"><summary>${errorLabel}</summary><p>${esc(error)}</p></details>`:''}${f.ocrPages?`<details><summary>Văn bản mẫu từ OCR · ${f.ocrPages} trang nhận dạng được</summary><p style="white-space:pre-wrap">${esc(f.ocrSample)}</p></details>`:''}${result}</article>`;
  }).join('');
 }
 async function adminPublishDocuments(){
