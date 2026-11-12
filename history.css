@@ -33,3 +33,6 @@
 .monthly-backlog-panel .health-heading{display:flex;justify-content:space-between}
 .monthly-backlog-filters{display:flex;flex-wrap:wrap;gap:8px 14px;max-width:100%}
 .monthly-backlog-filters label{display:grid;gap:4px;flex:1 1 auto}
+
+#alertHistoryPanel .history-number{min-width:44px;min-height:44px;padding:4px 8px;text-align:center}
+#alertHistoryPanel .history-scroll{overscroll-behavior-x:contain}
