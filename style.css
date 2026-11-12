@@ -312,4 +312,9 @@ body[data-menu-style="ocean"] nav button.active:before{border-radius:50%;backgro
 .admin-document-result{margin:12px 0;padding:16px;border:1px solid #c7dfef;border-radius:12px;overflow-wrap:anywhere}
 .admin-document-result h3{margin:0 0 8px}
 .admin-document-result .admin-preview{margin-top:8px}
+.admin-document-failed{padding:8px 12px;margin:6px 0}
+.admin-document-failed h3{margin-bottom:3px;font-size:14px}
+.admin-document-error{color:#a42920;font-size:13px}
+.admin-document-error summary{cursor:pointer}
+.admin-document-error p{margin:4px 0 0;white-space:pre-wrap}
 @media(max-width:700px){.admin-document-progress{grid-template-columns:1fr;gap:8px}}

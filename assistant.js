@@ -128,7 +128,7 @@ function roboDutyIntent(q){
 function roboDocumentIntent(q){
  const n=tlNorm(q);
  if(/^(?:(?:mo|xem|tim|vao|cho toi xem) )?(?:kho|danh muc) tai lieu(?: (?:o )?dau)?$/.test(n))return 'catalog';
- if(/\b(loai tru|ngoai tru)\b/.test(n)&&/\b(tnds|trach nhiem dan su)\b/.test(n))return 'source';
+ if(/\b(loai tru|ngoai tru)\b/.test(n)&&/\b(tnds|trach nhiem dan su|bao hiem|vat chat xe|dang kiem)\b/.test(n))return 'source';
  if(/\b(dieu \d{1,3}[a-z]?|bao nhieu van ban|quy dinh gi|noi dung gi)\b/.test(n)&&
     /\b(luat|thong tu|nghi dinh|cong van|van ban|tai lieu)\b/.test(n))return 'source';
  if(/\b(ho so ton|bao nhieu ho so|thong ke|ty le|doanh thu|tong tien)\b/.test(n)&&!/\b(tai lieu|bieu mau|van ban)\b/.test(n))return '';
@@ -193,7 +193,7 @@ async function roboAsk(q){
     return;
    }
    if(result.tools?.includes('legal_library')||result.tools?.includes('document_library')){
-    pending.legalAnswer=true;
+    pending.hasDocumentCards=!!result.documents?.length;
     pending.html='<h3>Tra cứu tài liệu trong kho 093</h3>'+tlFmt(result.answer)+(result.documents?.length?roboDocumentCards(result.documents):'');
     return;
    }
@@ -206,7 +206,7 @@ async function roboAsk(q){
   const items=documents==='source'?await documentSearch:null;
   clearTimeout(timer);
   if(epoch===roboEpoch){
-   if(items?.length&&!pending.legalAnswer)pending.html+=roboDocumentCards(items);
+   if(items?.length&&!pending.hasDocumentCards)pending.html+=roboDocumentCards(items);
    roboController=null;roboSetBusy(false);roboWrite('093_robo_log_v1',roboLog.filter(m=>m.role==='user'));roboDraw();
   }
  }
