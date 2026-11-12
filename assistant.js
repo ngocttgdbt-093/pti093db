@@ -164,6 +164,15 @@ function roboMatchesPriorityDocument(item,key){
  const code=value.match(/\b(?:qd|quyet dinh)\s*(109|110|123)\b/)?.[1];
  return code?code===key:roboPriorityDocuments[key].title.test(tlNorm(item.title||''));
 }
+function roboDocumentFollowup(q,previous){
+ if(!previous?.priority)return '';
+ const n=roboInjuryQuery(q);
+ if(/\b(ho so ton|bao nhieu ho so|thong ke|doanh thu|gdv|doi chu de|cau hoi khac)\b/.test(n))return '';
+ const explicit=roboPriorityDocument(q);
+ if(explicit)return explicit;
+ if(previous.priority==='pl01'&&/\b(gay|xuong|thuong tat|ton thuong|seo|bong|di chung|cut|mat thi luc|mat thinh luc)\b/.test(n))return 'pl01';
+ return /\b(con|tiep|thi sao|the nao|truong hop|dieu|khoan|ngoai le|co duoc|bao nhieu)\b/.test(n)?previous.priority:'';
+}
 function roboDocumentIntent(q){
  const n=tlNorm(q);
  if(/^(?:(?:mo|xem|tim|vao|cho toi xem) )?(?:kho|danh muc) tai lieu(?: (?:o )?dau)?$/.test(n))return 'catalog';
@@ -210,12 +219,15 @@ async function roboDownloadDocument(id,button,status){
 async function roboAsk(q){
  q=q.trim().slice(0,1000);if(!q||roboBusy)return;
  const duty=roboDutyIntent(q),intent=duty?'':roboDocumentIntent(q);
- const priority=!duty&&intent!=='catalog'?roboPriorityDocument(q):'';
+ const previous=[...roboLog].reverse().find(m=>m.role==='user');
+ const priority=!duty&&intent!=='catalog'?(roboPriorityDocument(q)||roboDocumentFollowup(q,previous)):'';
+ const lookup=priority==='pl01'&&previous?.priority==='pl01'&&roboInjuryClarification(previous.text)&&/^xuong\b/.test(roboInjuryQuery(q))?`Gãy ${q}`:q;
  const source=roboPriorityDocuments[priority];
  const documents=source?(intent==='direct'?'direct':'source'):intent;
  const history=roboLog.filter(m=>m.role==='user'&&!roboLocalLookup(m.text)&&!['direct','catalog'].includes(roboDocumentIntent(m.text))||m.aiText).slice(-6).map(m=>({role:m.role==='user'?'user':'assistant',content:m.role==='user'?m.text:m.aiText}));
  roboPush('user',q);
- const injuryClarification=priority==='pl01'?roboInjuryClarification(q):'';
+ roboLog.at(-1).priority=priority;
+ const injuryClarification=priority==='pl01'?roboInjuryClarification(lookup):'';
  if(injuryClarification){roboPush('bot','<p>'+esc(injuryClarification)+'</p>');return}
  if(documents==='catalog'){$('roboCatalog').click();return}
  if(!duty&&!documents&&roboLocalLookup(q)){try{roboPush('bot',roboAnswer(q))}catch{roboPush('bot','<p>Không xử lý được tra cứu. Hãy dùng menu Tra cứu hồ sơ.</p>')}return}
@@ -229,12 +241,13 @@ async function roboAsk(q){
    pending.html=items?.length?roboDocumentCards(items):items?'<p>Chưa tìm thấy tài liệu phù hợp. Hãy thử tên, từ khóa nghiệp vụ hoặc mã biểu mẫu.</p>':'<p>Kho tài liệu tạm thời chưa phản hồi. Hãy thử lại.</p>';
    return;
   }
-  const question=source?`Tra cứu đúng tài liệu nội bộ ${source.label}. Dẫn rõ điều, khoản hoặc trang nếu nguồn có. Với bảng thương tật, nêu đúng mục, tỷ lệ và điều kiện ghi trong cùng một dòng của PDF gốc, gồm ghi chú áp dụng nếu liên quan. Nếu chữ hoặc cột tỷ lệ không rõ thì báo chưa xác minh được. Hỏi thêm nếu chẩn đoán chưa đủ để chọn một dòng. Câu hỏi: ${q}`:q;
+  const question=source?`Tra cứu đúng tài liệu nội bộ ${source.label}. Dẫn rõ điều, khoản hoặc trang nếu nguồn có. Với bảng thương tật, nêu đúng mục, tỷ lệ và điều kiện ghi trong cùng một dòng của PDF gốc, gồm ghi chú áp dụng nếu liên quan. Nếu chữ hoặc cột tỷ lệ không rõ thì báo chưa xác minh được. Hỏi thêm nếu chẩn đoán chưa đủ để chọn một dòng. Xem lịch sử để hiểu câu hỏi tiếp theo, mỗi tổn thương tra riêng. Câu hỏi: ${lookup}`:q;
   const response=await authFetch('/api/assistant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question,gdv:roboMy,history}),signal:roboController.signal});
   const result=await response.json();if(epoch!==roboEpoch)return;
   if(source){
    const references=Array.isArray(result.documents)?result.documents.filter(item=>roboMatchesPriorityDocument(item,priority)):[];
    if(response.ok&&references.length&&typeof result.answer==='string'&&result.answer.trim()){
+    pending.aiText=result.answer;
     pending.hasDocumentCards=true;
     pending.html='<h3>'+esc(source.label)+'</h3>'+tlFmt(result.answer)+roboDocumentCards(references);
    }else pending.html='<p>Chưa xác minh được điều khoản theo '+esc(source.label)+'.</p>';
@@ -247,6 +260,7 @@ async function roboAsk(q){
     return;
    }
    if(result.tools?.includes('legal_library')||result.tools?.includes('document_library')){
+    pending.aiText=result.answer;
     pending.hasDocumentCards=!!result.documents?.length;
     pending.html='<h3>Tra cứu tài liệu trong kho 093</h3>'+tlFmt(result.answer)+(result.documents?.length?roboDocumentCards(result.documents):'');
     return;
