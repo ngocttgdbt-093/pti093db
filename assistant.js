@@ -129,7 +129,7 @@ const roboPriorityDocuments = {
  109:{label:'QĐ109 – Quy tắc bảo hiểm vật chất xe ô tô',query:'Quy tắc bảo hiểm vật chất xe ô tô',title:/\bvat chat xe o to\b/},
  110:{label:'QĐ110 – Quy tắc bảo hiểm trách nhiệm đối với phụ xe, người ngồi trên xe ô tô',query:'Quy tắc bảo hiểm phụ xe người ngồi trên xe ô tô',title:/\bquy tac\b.*\bphu xe\b.*\bo to\b/},
  123:{label:'QĐ123 – Quy tắc bảo hiểm trách nhiệm đối với người ngồi trên xe máy',query:'Quyết định 123 Quy tắc bảo hiểm trách nhiệm người ngồi trên xe máy',title:/^quy tac\b.*\bnguoi ngoi tren xe may\b/},
- 'pl01':{label:'PL01 – Bảng tỷ lệ trả tiền bồi thường thiệt hại về người',query:'Bảng tỷ lệ trả tiền bồi thường thiệt hại về người',title:/\bbang ty le\b.*\bboi thuong\b.*\bthiet hai ve nguoi\b/}
+ 'pl01':{label:'PL01 kèm QĐ110 ngày 23/09/2025 – Bảng tỷ lệ trả tiền bồi thường thiệt hại về người',query:'Bảng tỷ lệ trả tiền bồi thường thiệt hại về người',title:/\bbang ty le\b.*\bboi thuong\b.*\bthiet hai ve nguoi\b/}
 };
 function roboInjuryQuery(q){
  return tlNorm(q).replace(/\bgay cham\b/g,'gay chan');
@@ -145,10 +145,12 @@ function roboInjuryClarification(q){
 }
 function roboPriorityDocument(q){
  const n=roboInjuryQuery(q);
+ if(/\bpl\s*01\b|\bphu luc\s*0?1\b.*\b(thuong tat|thiet hai ve nguoi|qd\s*110|quyet dinh\s*110)\b|\bbang ty le\b.*\bboi thuong\b.*\b(?:thiet hai ve nguoi|thuong tat)\b/.test(n))return 'pl01';
  const code=n.match(/\b(?:qd|quyet dinh)\s*(109|110|123)\b/)?.[1];
  if(code)return code;
- if(/\bgay (?:xuong )?(?:tay|chan|xuong|canh tay|cang tay|quay|tru|co tay|ban tay|ngon tay|dui|cang chan|chay|mac|co chan|ban chan|ngon chan)\b/.test(n))return 'pl01';
- if(/\bpl\s*01\b|\bbang ty le\b.*\bboi thuong\b.*\b(?:thiet hai ve nguoi|thuong tat)\b/.test(n))return 'pl01';
+ const injury=/\b(gay|vo xuong|cut chi|cut ngon|mat ngon|mat mat|mat thi luc|mat thinh luc|giam thi luc|giam thinh luc|seo|bong|liet|chan thuong|ton thuong|thuong tat|di chung|xoang|tran khi|tran mau|mat rang|gay rang|gay mui)\b/.test(n);
+ const rate=/\b(ty le|muc nao|muc bao nhieu|bao nhieu|phan tram|boi thuong|chi tra|tra tien|tinh the nao|ap dung)\b/.test(n);
+ if(injury&&(rate||/\bgay (?:xuong\b|tay\b|chan\b)/.test(n)))return 'pl01';
  if(/\b(ho so ton|bao nhieu ho so|thong ke|doanh thu|tong tien|ty le boi thuong)\b/.test(n)&&!/\b(quy tac|dieu khoan|loai tru)\b/.test(n))return '';
  if(/\b(phu xe|nguoi ngoi tren (?:xe )?o to)\b/.test(n))return '110';
  if(/\b(nntx may|nguoi ngoi tren xe may)\b/.test(n))return '123';
@@ -227,7 +229,7 @@ async function roboAsk(q){
    pending.html=items?.length?roboDocumentCards(items):items?'<p>Chưa tìm thấy tài liệu phù hợp. Hãy thử tên, từ khóa nghiệp vụ hoặc mã biểu mẫu.</p>':'<p>Kho tài liệu tạm thời chưa phản hồi. Hãy thử lại.</p>';
    return;
   }
-  const question=source?`Tra cứu đúng tài liệu nội bộ ${source.label}. Dẫn rõ điều, khoản hoặc trang nếu nguồn có. Với bảng thương tật, nêu đúng dòng, mức và điều kiện ghi trong bảng. Hỏi thêm nếu chẩn đoán chưa đủ để chọn một dòng. Câu hỏi: ${q}`:q;
+  const question=source?`Tra cứu đúng tài liệu nội bộ ${source.label}. Dẫn rõ điều, khoản hoặc trang nếu nguồn có. Với bảng thương tật, nêu đúng mục, tỷ lệ và điều kiện ghi trong cùng một dòng của PDF gốc, gồm ghi chú áp dụng nếu liên quan. Nếu chữ hoặc cột tỷ lệ không rõ thì báo chưa xác minh được. Hỏi thêm nếu chẩn đoán chưa đủ để chọn một dòng. Câu hỏi: ${q}`:q;
   const response=await authFetch('/api/assistant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question,gdv:roboMy,history}),signal:roboController.signal});
   const result=await response.json();if(epoch!==roboEpoch)return;
   if(source){
