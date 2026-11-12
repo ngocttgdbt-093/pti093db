@@ -125,6 +125,43 @@ function roboFallback(q,code){const messages={AI_QUOTA:'AI đã hết hạn mứ
 function roboDutyIntent(q){
  return /\b(lich truc|ai truc|truc (?:chinh|thay|hien truong|giam dinh|ngoai gio|trong gio)|(?:hom nay|ngay mai|toi nay) (?:ai )?truc|truc (?:ngay|hom nay|hom qua|hom nao|mai|cuoi tuan|khi nao|toi nay|dem nay))\b/.test(tlNorm(q));
 }
+const roboPriorityDocuments = {
+ 109:{label:'QĐ109 – Quy tắc bảo hiểm vật chất xe ô tô',query:'Quy tắc bảo hiểm vật chất xe ô tô',title:/\bvat chat xe o to\b/},
+ 110:{label:'QĐ110 – Quy tắc bảo hiểm trách nhiệm đối với phụ xe, người ngồi trên xe ô tô',query:'Quy tắc bảo hiểm phụ xe người ngồi trên xe ô tô',title:/\bquy tac\b.*\bphu xe\b.*\bo to\b/},
+ 123:{label:'QĐ123 – Quy tắc bảo hiểm trách nhiệm đối với người ngồi trên xe máy',query:'Quyết định 123 Quy tắc bảo hiểm trách nhiệm người ngồi trên xe máy',title:/^quy tac\b.*\bnguoi ngoi tren xe may\b/},
+ 'pl01':{label:'PL01 – Bảng tỷ lệ trả tiền bồi thường thiệt hại về người',query:'Bảng tỷ lệ trả tiền bồi thường thiệt hại về người',title:/\bbang ty le\b.*\bboi thuong\b.*\bthiet hai ve nguoi\b/}
+};
+function roboInjuryQuery(q){
+ return tlNorm(q).replace(/\bgay cham\b/g,'gay chan');
+}
+function roboInjuryClarification(q){
+ const n=roboInjuryQuery(q);
+ if(!/\bgay\b/.test(n))return '';
+ const broad=n.match(/\bgay (?:xuong )?(tay|chan)\b/)?.[1];
+ if(!broad||/\b(canh tay|cang tay|quay|tru|co tay|ban tay|ngon tay|dui|cang chan|chay|mac|co chan|ban chan|ngon chan)\b/.test(n))return '';
+ return broad==='tay'
+  ?'Anh/chị cho biết gãy xương nào theo chẩn đoán, ví dụ xương cánh tay, xương quay, xương trụ, xương bàn tay hay ngón tay?'
+  :'Anh/chị cho biết gãy xương nào theo chẩn đoán, ví dụ xương đùi, xương chày, xương mác, xương bàn chân hay ngón chân?';
+}
+function roboPriorityDocument(q){
+ const n=roboInjuryQuery(q);
+ const code=n.match(/\b(?:qd|quyet dinh)\s*(109|110|123)\b/)?.[1];
+ if(code)return code;
+ if(/\bgay (?:xuong )?(?:tay|chan|xuong|canh tay|cang tay|quay|tru|co tay|ban tay|ngon tay|dui|cang chan|chay|mac|co chan|ban chan|ngon chan)\b/.test(n))return 'pl01';
+ if(/\bpl\s*01\b|\bbang ty le\b.*\bboi thuong\b.*\b(?:thiet hai ve nguoi|thuong tat)\b/.test(n))return 'pl01';
+ if(/\b(ho so ton|bao nhieu ho so|thong ke|doanh thu|tong tien|ty le boi thuong)\b/.test(n)&&!/\b(quy tac|dieu khoan|loai tru)\b/.test(n))return '';
+ if(/\b(phu xe|nguoi ngoi tren (?:xe )?o to)\b/.test(n))return '110';
+ if(/\b(nntx may|nguoi ngoi tren xe may)\b/.test(n))return '123';
+ if(/\b(vcx|vat chat)\b/.test(n))return '109';
+ if(/\btu nguyen\b/.test(n)&&/\bo to\b/.test(n)&&!/\b(tnds|trach nhiem)\b/.test(n))return '109';
+ return '';
+}
+function roboMatchesPriorityDocument(item,key){
+ const value=tlNorm([item.title,item.filename,item.id].filter(Boolean).join(' '));
+ if(key==='pl01')return /\bpl\s*01\b/.test(value)||roboPriorityDocuments[key].title.test(value);
+ const code=value.match(/\b(?:qd|quyet dinh)\s*(109|110|123)\b/)?.[1];
+ return code?code===key:roboPriorityDocuments[key].title.test(tlNorm(item.title||''));
+}
 function roboDocumentIntent(q){
  const n=tlNorm(q);
  if(/^(?:(?:mo|xem|tim|vao|cho toi xem) )?(?:kho|danh muc) tai lieu(?: (?:o )?dau)?$/.test(n))return 'catalog';
@@ -170,22 +207,37 @@ async function roboDownloadDocument(id,button,status){
 }
 async function roboAsk(q){
  q=q.trim().slice(0,1000);if(!q||roboBusy)return;
- const duty=roboDutyIntent(q),documents=duty?'':roboDocumentIntent(q);
+ const duty=roboDutyIntent(q),intent=duty?'':roboDocumentIntent(q);
+ const priority=!duty&&intent!=='catalog'?roboPriorityDocument(q):'';
+ const source=roboPriorityDocuments[priority];
+ const documents=source?(intent==='direct'?'direct':'source'):intent;
  const history=roboLog.filter(m=>m.role==='user'&&!roboLocalLookup(m.text)&&!['direct','catalog'].includes(roboDocumentIntent(m.text))||m.aiText).slice(-6).map(m=>({role:m.role==='user'?'user':'assistant',content:m.role==='user'?m.text:m.aiText}));
  roboPush('user',q);
+ const injuryClarification=priority==='pl01'?roboInjuryClarification(q):'';
+ if(injuryClarification){roboPush('bot','<p>'+esc(injuryClarification)+'</p>');return}
  if(documents==='catalog'){$('roboCatalog').click();return}
  if(!duty&&!documents&&roboLocalLookup(q)){try{roboPush('bot',roboAnswer(q))}catch{roboPush('bot','<p>Không xử lý được tra cứu. Hãy dùng menu Tra cứu hồ sơ.</p>')}return}
  const epoch=++roboEpoch;roboController=new AbortController();const timer=setTimeout(()=>roboController?.abort(),100000);roboSetBusy(true);
  const pending={role:'bot',html:'<p>Đang đọc hướng dẫn và phân tích câu hỏi…</p>'};roboLog.push(pending);roboDraw();
- const documentSearch=documents?roboFindChatDocuments(q,roboController.signal):Promise.resolve([]);
+ const documentSearch=documents?roboFindChatDocuments(source?.query||q,roboController.signal)
+  .then(items=>source&&items?items.filter(item=>roboMatchesPriorityDocument(item,priority)):items):Promise.resolve([]);
  try{
   if(documents==='direct'){
    const items=await documentSearch;if(epoch!==roboEpoch)return;
    pending.html=items?.length?roboDocumentCards(items):items?'<p>Chưa tìm thấy tài liệu phù hợp. Hãy thử tên, từ khóa nghiệp vụ hoặc mã biểu mẫu.</p>':'<p>Kho tài liệu tạm thời chưa phản hồi. Hãy thử lại.</p>';
    return;
   }
-  const response=await authFetch('/api/assistant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,gdv:roboMy,history}),signal:roboController.signal});
+  const question=source?`Tra cứu đúng tài liệu nội bộ ${source.label}. Dẫn rõ điều, khoản hoặc trang nếu nguồn có. Với bảng thương tật, nêu đúng dòng, mức và điều kiện ghi trong bảng. Hỏi thêm nếu chẩn đoán chưa đủ để chọn một dòng. Câu hỏi: ${q}`:q;
+  const response=await authFetch('/api/assistant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question,gdv:roboMy,history}),signal:roboController.signal});
   const result=await response.json();if(epoch!==roboEpoch)return;
+  if(source){
+   const references=Array.isArray(result.documents)?result.documents.filter(item=>roboMatchesPriorityDocument(item,priority)):[];
+   if(response.ok&&references.length&&typeof result.answer==='string'&&result.answer.trim()){
+    pending.hasDocumentCards=true;
+    pending.html='<h3>'+esc(source.label)+'</h3>'+tlFmt(result.answer)+roboDocumentCards(references);
+   }else pending.html='<p>Chưa xác minh được điều khoản theo '+esc(source.label)+'.</p>';
+   return;
+  }
   if(!response.ok)pending.html=roboFallback(q,result.code);
   else if(typeof result.answer==='string'&&result.answer.trim()){
    if(result.tools?.includes('duty_schedule')){
@@ -201,7 +253,7 @@ async function roboAsk(q){
    const refs=(result.sources||[]).map(s=>tlKB().find(e=>e.id===s.id)).filter(Boolean);
    pending.html='<h3>'+(result.tools?.includes('cost_cohort_query')?'Truy vấn dữ liệu 093':'Trợ lý AI 093')+'</h3>'+tlFmt(result.answer)+'<p class="robo-source">'+(result.tools?.includes('cost_cohort_query')?'Tính trực tiếp từ dữ liệu':'AI Cloudflare')+' · '+esc(String(result.scope).split(', ').map(PTIGdv.gdvLabel).join(', '))+' · Chốt '+esc(result.cutoff?.split('-').reverse().join('/'))+' · Nội dung AI cần được đối chiếu trước khi áp dụng.</p>'+(refs.length?'<div class="robo-chips">'+roboChips(refs)+'</div>':'');
   }else pending.html=roboFallback(q,'AI_EMPTY');
- }catch{if(epoch===roboEpoch)pending.html=roboFallback(q,'AI_UNAVAILABLE')}
+ }catch{if(epoch===roboEpoch)pending.html=source?'<p>Chưa tra cứu được '+esc(source.label)+'.</p>':roboFallback(q,'AI_UNAVAILABLE')}
  finally{
   const items=documents==='source'?await documentSearch:null;
   clearTimeout(timer);
