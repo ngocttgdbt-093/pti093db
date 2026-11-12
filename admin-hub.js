@@ -3,7 +3,7 @@ const adminTabs=[['data','Dữ liệu báo cáo'],['duty','Lịch trực'],['doc
 function adminHubPanel(dataHtml='', locked=false){
  if(locked||!adminSessionToken)return `<section class="panel admin-locked"><div class="admin-lock-icon">🔐</div><h2>Quản trị hệ thống</h2><p>Đăng nhập để cập nhật dữ liệu, lịch trực, tài liệu và cấu hình GĐV/email.</p><button class="import-primary" onclick="adminLogin()">Đăng nhập quản trị</button><p class="note">Dùng mật khẩu quản trị hiện hành. Quyền quản trị tự khóa khi chuyển sang menu khác.</p></section>`;
  const content=adminTab==='data'?dataHtml:adminTab==='mail'?mailAdminPanel():adminContentPanel(adminTab==='duty'?'duty':'document');
- return `<div class="admin-toolbar"><div><strong>Quản trị hệ thống</strong><small>Đã đăng nhập · Tự khóa khi chuyển menu</small></div><button onclick="adminLogout()">Đăng xuất quản trị</button></div><nav class="admin-tabs" aria-label="Các mục quản trị">${adminTabs.map(([id,label])=>`<button type="button" class="${adminTab===id?'active':''}" aria-pressed="${adminTab===id}" onclick="adminSelectTab('${id}')">${label}</button>`).join('')}</nav><div class="admin-content">${content}</div>`;
+ return `<div class="admin-toolbar"><div><strong>Quản trị hệ thống</strong><small>Đã đăng nhập · Tự khóa khi chuyển menu</small></div><button onclick="adminLogout()">Đăng xuất quản trị</button></div><div class="admin-tabs" role="group" aria-label="Các mục quản trị">${adminTabs.map(([id,label])=>`<button type="button" class="${adminTab===id?'active':''}" aria-pressed="${adminTab===id}" onclick="adminSelectTab('${id}')">${label}</button>`).join('')}</div><div class="admin-content">${content}</div>`;
 }
 async function adminLogin(){
  if(adminLoginPending||adminSessionToken)return;
@@ -38,9 +38,117 @@ function adminAfterRender(){
  else{drawAdminPreview();loadAdminContentStatus();}
 }
 function adminContentPanel(kind){
- const duty=kind==='duty',state=adminContentState?.kind===kind?adminContentState:null;
- return `<section class="panel admin-upload"><h2>${duty?'Cập nhật lịch trực':'Cập nhật tài liệu'}</h2><p>${duty?'Đọc lịch trực Excel và đồng bộ vào chatbot, tệp tải về, nhắc lịch trong email.':'Tự đọc nội dung, phân nhóm, lập chỉ mục và tạo câu hỏi gợi ý cho chatbot; giữ tệp gốc để tải về.'}</p><form onsubmit="event.preventDefault();adminPreviewContent('${kind}')"><div class="admin-upload-grid"><label>Tệp ${duty?'Excel lịch trực':'tài liệu'}<input type="file" id="adminContentFile" onchange="adminInvalidatePreview()" accept="${duty?'.xlsx':'.pdf,.docx,.xlsx,.txt,.md'}" required ${state?.busy?'disabled':''}><small>${duty?'Excel .xlsx, tối đa 1 MB':'PDF, Word .docx, Excel .xlsx, TXT, Markdown · Tối đa 20 MB'}</small></label><label>${duty?'Mô tả quy tắc (không bắt buộc)':'Mô tả / hướng dẫn phân loại (không bắt buộc)'}<textarea id="adminContentDescription" oninput="adminInvalidatePreview()" maxlength="4000" rows="5" placeholder="${duty?'Để trống để giữ quy tắc đang áp dụng. Ví dụ: đổi cột trực thay sang cột C.':'Để trống để hệ thống tự đọc và phân loại. Có thể ghi nhóm tài liệu hoặc nội dung cần ưu tiên tra cứu.'}" ${state?.busy?'disabled':''}></textarea></label></div><button class="import-primary" ${state?.busy?'disabled':''}>Đọc tệp & xem trước</button><p class="note">Kiểm tra kết quả bên dưới rồi chọn “Xác nhận cập nhật”.</p></form><div id="adminContentPreview" aria-live="polite"></div></section><section class="panel"><h2>${duty?'Lịch trực đang áp dụng':'Lịch sử cập nhật tài liệu'}</h2><div id="adminContentStatus" aria-live="polite">Đang đọc thông tin…</div></section>`;
+ if(kind==='document')return adminDocumentPanel();
+ return `<section class="panel admin-upload"><h2>Cập nhật lịch trực</h2><p>Đọc lịch trực Excel và đồng bộ vào chatbot, tệp tải về, nhắc lịch trong email.</p><form onsubmit="event.preventDefault();adminPreviewContent('duty')"><div class="admin-upload-grid"><label>Tệp Excel lịch trực<input type="file" id="adminContentFile" onchange="adminInvalidatePreview()" accept=".xlsx" required><small>Excel .xlsx, tối đa 1 MB</small></label><label>Mô tả quy tắc (không bắt buộc)<textarea id="adminContentDescription" oninput="adminInvalidatePreview()" maxlength="4000" rows="5" placeholder="Để trống để giữ quy tắc đang áp dụng. Ví dụ: đổi cột trực thay sang cột C."></textarea></label></div><button class="import-primary">Đọc tệp & xem trước</button><p class="note">Kiểm tra kết quả bên dưới rồi chọn “Xác nhận cập nhật”.</p></form><div id="adminContentPreview" aria-live="polite"></div></section><section class="panel"><h2>Lịch trực đang áp dụng</h2><div id="adminContentStatus" aria-live="polite">Đang đọc thông tin…</div></section>`;
 }
+function adminDocumentPanel(){
+ const state=adminContentState?.kind==='document'?adminContentState:null;
+ return `<section class="panel admin-upload"><h2>Cập nhật tài liệu</h2><p>Đọc nội dung, phân nhóm và tạo câu hỏi gợi ý cho chatbot. Tệp gốc được lưu để tải về.</p>
+ <form onsubmit="event.preventDefault();adminPreviewDocuments()">
+ <div class="admin-upload-grid"><label>Tệp tài liệu<input type="file" id="adminContentFile" onchange="adminInvalidatePreview()" accept=".pdf,.docx,.xlsx,.txt,.md" multiple required><small>PDF, Word .docx, Excel .xlsx, TXT, Markdown · Tối đa 20 MB mỗi tệp</small></label>
+ <label>Mô tả chung cho các tệp (không bắt buộc)<textarea id="adminContentDescription" oninput="adminInvalidatePreview()" maxlength="4000" rows="5" placeholder="Có thể ghi nhóm tài liệu hoặc nội dung cần ưu tiên tra cứu.">${esc(state?.description||'')}</textarea></label></div>
+ <div class="admin-upload-actions"><button class="import-primary" id="adminDocumentPreviewButton">Đọc tệp & xem trước</button><button type="button" class="import-primary" id="adminDocumentUploadButton" onclick="adminPublishDocuments()" disabled>Tải lên</button></div>
+ <p class="note">Kiểm tra kết quả xem trước. Nút Tải lên sẽ bật khi có tệp đạt.</p></form>
+ <div id="adminDocumentProgress" class="admin-document-progress">${adminDocumentProgress(state)}</div>
+ <p id="adminDocumentStatus" role="status"></p><div id="adminContentPreview"></div></section>
+ <section class="panel"><h2>Lịch sử cập nhật tài liệu</h2><div id="adminContentStatus" aria-live="polite">Đang đọc thông tin…</div></section>`;
+}
+function adminDocumentProgress(state){
+ const files=state?.files||[],readable=files.filter(f=>f.read&&!f.readError),ready=files.filter(f=>f.preview);
+ const stages=[
+  ['Đọc và kiểm tra',files.filter(f=>f.read).length,files.length],
+  ['Phân tích',readable.filter(f=>f.preview||f.analysisError).length,readable.length],
+  ['Tải lên',ready.filter(f=>f.published).length,ready.length]
+ ];
+ return stages.map(([label,count,total])=>`<label><span>${label} <strong>${total?`${count}/${total}`:'Chờ xử lý'}</strong></span><progress value="${count}" max="${total||1}" aria-label="${label}"></progress></label>`).join('');
+}
+async function adminPreviewDocuments(){
+ if(adminContentState?.busy)return;
+ const files=Array.from(document.getElementById('adminContentFile')?.files||[],file=>({file}));
+ if(!files.length)return;
+ const epoch=adminEpoch,description=document.getElementById('adminContentDescription')?.value||'';
+ const state=adminContentState={kind:'document',files,description,busy:true,status:'Đang đọc và kiểm tra tệp…'};
+ drawAdminDocuments();
+ for(const entry of files){
+  try{
+   const file=entry.file;
+   if(!file.size)throw Error('Tệp rỗng.');
+   if(file.size>20*1048576)throw Error('Tệp vượt giới hạn 20 MB.');
+   if(!/\.(pdf|docx|xlsx|txt|md)$/i.test(file.name))throw Error('Định dạng tệp chưa được hỗ trợ.');
+   if(/\.pdf$/i.test(file.name)){
+    entry.pdfText=await adminPdfText(file);
+    if(!entry.pdfText.trim())throw Error('PDF chưa có lớp văn bản. Hãy nhận dạng chữ (OCR) rồi chọn lại tệp.');
+   }
+  }catch(e){entry.readError=e.message;}
+  if(epoch!==adminEpoch)return;
+  entry.read=true;
+  drawAdminDocuments();
+ }
+ state.status='Đang phân tích tài liệu…';
+ drawAdminDocuments();
+ for(const entry of files.filter(f=>!f.readError)){
+  try{
+   const form=new FormData();
+   form.set('file',entry.file);form.set('kind','document');form.set('description',description);
+   if(entry.pdfText!==undefined)form.set('pdfText',entry.pdfText);
+   entry.preview=await adminApi({method:'POST',body:form});
+  }catch(e){entry.analysisError=e.message;}
+  if(epoch!==adminEpoch)return;
+  delete entry.pdfText;
+  drawAdminDocuments();
+ }
+ state.busy=false;
+ const ready=files.filter(f=>f.preview).length;
+ state.status=`Xem trước xong · ${ready}/${files.length} tệp sẵn sàng tải lên.`;
+ drawAdminDocuments();
+}
+function drawAdminDocuments(){
+ const progress=document.getElementById('adminDocumentProgress');
+ if(!progress)return;
+ const state=adminContentState?.kind==='document'?adminContentState:null;
+ const files=state?.files||[],busy=!!state?.busy;
+ const selected=document.getElementById('adminContentFile');
+ const pending=files.filter(f=>f.preview&&!f.published);
+ progress.innerHTML=adminDocumentProgress(state);
+ document.getElementById('adminDocumentStatus').textContent=state?.status||(selected.files.length?`Đã chọn ${selected.files.length} tệp.`:'');
+ document.getElementById('adminDocumentPreviewButton').disabled=busy||!selected.files.length||files.some(f=>f.preview);
+ const upload=document.getElementById('adminDocumentUploadButton');
+ upload.disabled=busy||!pending.length;
+ upload.textContent=pending.some(f=>f.uploadError)?'Thử tải lại tệp lỗi':'Tải lên';
+ selected.disabled=busy;
+ document.getElementById('adminContentDescription').disabled=busy;
+ document.getElementById('adminContentPreview').innerHTML=files.map(f=>{
+  const error=f.readError||f.analysisError||f.uploadError;
+  const result=f.published?'<p class="import-success">Đã tải lên</p>':f.preview?adminPreviewMarkup(f.preview,false):'';
+  return `<article class="admin-document-result"><h3>${esc(f.file.name)}</h3>${error?`<p class="import-error">${esc(error)}</p>`:''}${result}</article>`;
+ }).join('');
+}
+async function adminPublishDocuments(){
+ const state=adminContentState;
+ if(state?.kind!=='document'||state.busy)return;
+ const pending=state.files.filter(f=>f.preview&&!f.published);
+ if(!pending.length)return;
+ const epoch=adminEpoch;
+ state.busy=true;
+ for(const entry of pending){
+  state.status=`Đang tải lên: ${entry.file.name}`;
+  delete entry.uploadError;
+  drawAdminDocuments();
+  try{
+   await adminApi({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish',id:entry.preview.id})});
+   entry.published=true;
+  }catch(e){entry.uploadError=e.message;}
+  if(epoch!==adminEpoch)return;
+  drawAdminDocuments();
+ }
+ const published=state.files.filter(f=>f.published).length;
+ const failed=state.files.filter(f=>f.uploadError).length;
+ state.status=`Đã tải lên ${published}/${state.files.length} tệp.${failed?` ${failed} tệp tải lên lỗi.`:''}`;
+ state.busy=false;
+ drawAdminDocuments();
+ await loadAdminContentStatus();
+}
+
 async function adminApi(options={}){
  const token=await requireAdminSession(),epoch=adminEpoch;
  const headers=new Headers(options.headers);headers.set('X-Database-Authorization',token);
@@ -50,10 +158,10 @@ async function adminApi(options={}){
  return body;
 }
 async function adminPdfText(file){
- const pdfjs=await import('./vendor/pdfjs/pdf.mjs');pdfjs.GlobalWorkerOptions.workerSrc=new URL('./vendor/pdfjs/pdf.worker.mjs',document.baseURI).href;
+ const pdfjs=await import('./vendor/pdfjs/pdf.mjs');pdfjs.GlobalWorkerOptions.workerSrc=new URL('./vendor/pdfjs/pdf.worker.mjs?v=5.6.205-complete',document.baseURI).href;
  const task=pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false,disableFontFace:true});
- const pdf=await task.promise;let text='';
- try{if(pdf.numPages>500)throw Error('PDF vượt quá 500 trang. Vui lòng chia nhỏ.');for(let i=1;i<=pdf.numPages;i++){const page=await pdf.getPage(i),content=await page.getTextContent();text+=content.items.map(item=>item.str+(item.hasEOL?'\n':' ')).join('')+'\n';if(text.length>500000)throw Error('PDF vượt giới hạn văn bản. Vui lòng chia nhỏ.');}return text;}finally{await pdf.destroy();}
+ let text='';
+ try{const pdf=await task.promise;if(pdf.numPages>500)throw Error('PDF vượt quá 500 trang. Vui lòng chia nhỏ.');for(let i=1;i<=pdf.numPages;i++){const page=await pdf.getPage(i),content=await page.getTextContent();text+=content.items.map(item=>item.str+(item.hasEOL?'\n':' ')).join('')+'\n';if(text.length>500000)throw Error('PDF vượt giới hạn văn bản. Vui lòng chia nhỏ.');}return text;}finally{await task.destroy().catch(()=>{});}
 }
 async function adminPreviewContent(kind){
  if(adminContentState?.busy)return;
@@ -70,12 +178,13 @@ async function adminPreviewContent(kind){
  if(epoch===adminEpoch)drawAdminPreview();
 }
 function drawAdminPreview(){
+ if(adminTab==='documents'){drawAdminDocuments();return;}
  const host=document.getElementById('adminContentPreview'),s=adminContentState;if(!host||!s)return;
  host.innerHTML=s.error?`<p class="import-error" role="alert">${esc(s.error)}</p>`:s.busy?`<p class="admin-working" role="status">${esc(s.message||'Đang cập nhật…')}</p>`:s.published?`<div class="import-success"><strong>✓ Đã cập nhật ${s.kind==='duty'?'lịch trực':'tài liệu'}</strong><p>${s.kind==='duty'?'Chatbot, tệp tải về và nhắc lịch email đã dùng lịch mới.':'Tài liệu đã có trong kho tải về và sẵn sàng cho chatbot tra cứu.'}</p></div>`:s.preview?adminPreviewMarkup(s.preview):'';
  const busy=!!s.busy;document.querySelectorAll('.admin-upload form input,.admin-upload form textarea,.admin-upload form button').forEach(el=>el.disabled=busy);
 }
-function adminPreviewMarkup(p){
- return `<div class="admin-preview"><h3>Hệ thống hiểu như sau…</h3><p><b>${esc(p.title)}</b></p><p>${esc(p.explanation)}</p>${p.kind==='duty'?`<p><b>${esc(p.start.split('-').reverse().join('/'))} – ${esc(p.end.split('-').reverse().join('/'))}</b> · ${p.count} ngày</p><details><summary>Xem toàn bộ phân công</summary><div class="mail-table"><table><thead><tr><th>Ngày</th><th>Trực chính</th><th>Trực thay</th></tr></thead><tbody>${p.days.map(d=>`<tr><td>${esc(d.date.split('-').reverse().join('/'))}</td><td>${esc(PTIGdv.gdvLabel(d.primary))}</td><td>${d.backup?esc(PTIGdv.gdvLabel(d.backup)):''}</td></tr>`).join('')}</tbody></table></div></details>`:`<p>Nhóm: <b>${esc(p.category)}</b> · Đã đọc ${num(p.characters)} ký tự</p><p>${esc(p.summary)}</p><h4>Câu hỏi gợi ý</h4><ul>${p.questions.map(q=>`<li>${esc(q)}</li>`).join('')}</ul>`}<button class="import-primary" onclick="adminPublishContent()">Xác nhận cập nhật</button></div>`;
+function adminPreviewMarkup(p,showPublish=true){
+ return `<div class="admin-preview"><h3>Hệ thống hiểu như sau…</h3><p><b>${esc(p.title)}</b></p><p>${esc(p.explanation)}</p>${p.kind==='duty'?`<p><b>${esc(p.start.split('-').reverse().join('/'))} – ${esc(p.end.split('-').reverse().join('/'))}</b> · ${p.count} ngày</p><details><summary>Xem toàn bộ phân công</summary><div class="mail-table"><table><thead><tr><th>Ngày</th><th>Trực chính</th><th>Trực thay</th></tr></thead><tbody>${p.days.map(d=>`<tr><td>${esc(d.date.split('-').reverse().join('/'))}</td><td>${esc(PTIGdv.gdvLabel(d.primary))}</td><td>${d.backup?esc(PTIGdv.gdvLabel(d.backup)):''}</td></tr>`).join('')}</tbody></table></div></details>`:`<p>Nhóm: <b>${esc(p.category)}</b> · Đã đọc ${num(p.characters)} ký tự</p><p>${esc(p.summary)}</p><h4>Câu hỏi gợi ý</h4><ul>${p.questions.map(q=>`<li>${esc(q)}</li>`).join('')}</ul>`}${showPublish?'<button class="import-primary" onclick="adminPublishContent()">Xác nhận cập nhật</button>':''}</div>`;
 }
 async function adminPublishContent(){
  const s=adminContentState;if(s?.busy||!s?.preview)return;
@@ -94,4 +203,4 @@ async function loadAdminContentStatus(){
 // Never retain administrator capability across page reload or tab close.
 window.addEventListener('pagehide',()=>{const token=adminClearSession();if(token)authFetch('/api/admin/logout',{method:'POST',headers:{'X-Database-Authorization':token},keepalive:true}).catch(()=>{});});
 
-function adminInvalidatePreview(){if(adminContentState?.busy)return;adminContentState=null;document.getElementById('adminContentPreview')?.replaceChildren();}
+function adminInvalidatePreview(){if(adminContentState?.busy)return;adminContentState=null;if(adminTab==='documents')drawAdminDocuments();else document.getElementById('adminContentPreview')?.replaceChildren();}
