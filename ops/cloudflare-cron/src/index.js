@@ -9,9 +9,11 @@ const MODES = Object.freeze({
 const TIMEZONE = "Asia/Ho_Chi_Minh";
 
 function localDate(utcMs) {
-  return new Intl.DateTimeFormat("en-CA", {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit"
-  }).format(new Date(utcMs));
+  }).formatToParts(new Date(utcMs));
+  const fields = Object.fromEntries(parts.filter(x => x.type !== "literal").map(x => [x.type, x.value]));
+  return `${fields.year}-${fields.month}-${fields.day}`;
 }
 
 export function makePayload(cron, scheduledTime) {
