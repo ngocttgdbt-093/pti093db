@@ -22,3 +22,9 @@ Use the existing GitHub App and authorized Drive connection for reads. Request o
 ## Bàn giao quy ước ngày 11/11/2026
 
 Đọc [Quy ước vận hành Dashboard 093](docs/quy-uoc-van-hanh-2026-11-11.md) khi tiếp tục công việc hoặc cập nhật Graphify. Kiểm tra tài liệu và các mô-đun liên quan có thực sự nằm trong đầu vào và xuất hiện trong sơ đồ mới. Xác minh artifact theo commit và bản sao Drive trước khi báo đã cập nhật Graphify.
+
+## Bàn giao dài hạn: nâng cấp chatbot AI 093 (14/11/2026)
+
+Khi được giao tiếp tục/nâng cấp chatbot Dashboard 093, **đọc trước** [Implementation Runbook](docs/CHATBOT-AI-093-IMPLEMENTATION-RUNBOOK.md), [thiết kế ngữ nghĩa](docs/chatbot-semantic-ai-design-2026-11-14.md), [bộ tình huống nghiệm thu](tests/chatbot-semantic-acceptance.json) và kiểm tra trạng thái PR #45 / nhánh `test/chatbot-semantic-ai-20261114`. Đây là quyết định nghiệp vụ đã bàn giao: chatbot phải hiểu tiếng Việt tự nhiên và ngữ cảnh đa lượt, chọn công cụ dữ liệu có phân quyền, truy xuất kho tri thức đúng nguồn và kiểm tra câu trả lời đầy đủ. Không phát triển bằng cách chỉ vá mẫu câu regex.
+
+Ưu tiên tận dụng Cloudflare Workers AI/serverless hiện có; không cần VPS; không suy đoán quota hoặc khả năng model tại thời điểm triển khai. Không hỏi người dùng nhắc lại yêu cầu đã ghi trong runbook. **Đây là hướng dẫn cho phiên triển khai tương lai, không tự động cho phép merge, deploy hoặc truy cập backend nhạy cảm.** Gói bàn giao hiện là docs + acceptance seed, chưa phải tính năng được code/test/deploy. Nếu việc đọc runbook thất bại, báo rõ và không tự đoán nội dung.
