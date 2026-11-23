@@ -48,12 +48,8 @@
  body>main :is(input,select,textarea)::placeholder{color:#a1b7ca}
  body>main button{transition:background-color .22s,box-shadow .22s,transform .22s}
  body>main button:hover{filter:brightness(1.12)}
- body>main .panel,body>main .card{animation:v3-appear .55s cubic-bezier(.2,.75,.22,1) both}
- body>main .panel:nth-child(2n),body>main .card:nth-child(2n){animation-delay:.075s}
- body>main .panel:nth-child(3n),body>main .card:nth-child(3n){animation-delay:.12s}
  body>aside nav#nav>button.active{transition:transform .3s cubic-bezier(.2,.8,.2,1),background-color .25s,box-shadow .25s}
  body>aside nav#nav>button.active:hover{transform:translateY(-2px)}
- @keyframes v3-appear{from{opacity:.3;transform:translate3d(0,14px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
 }
 @media screen and (min-width:761px){
  body[data-menu-style]>aside{background:linear-gradient(170deg,#0d2138,#112e4c 65%,#0c1c30);border-color:#335471;box-shadow:0 20px 50px #030d1d70}
